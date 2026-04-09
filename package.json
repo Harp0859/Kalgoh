@@ -13,6 +13,7 @@
     "@tailwindcss/vite": "^4.2.2",
     "date-fns": "^4.1.0",
     "dexie": "^4.4.2",
+    "localtunnel": "^2.0.2",
     "lucide-react": "^1.8.0",
     "papaparse": "^5.5.3",
     "react": "^19.2.4",
