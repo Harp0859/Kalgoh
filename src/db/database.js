@@ -2,28 +2,37 @@ import Dexie from 'dexie';
 
 export const db = new Dexie('KalgohTradingDB');
 
-db.version(1).stores({
-  trades: '++id, ticket, openTime, closeTime, type, symbol, volume, openPrice, closePrice, commission, swap, profit, comment, uploadBatch',
-  uploads: '++id, fileName, uploadedAt, tradeCount',
+db.version(2).stores({
+  trades: '++id, ticket, openTime, closeTime, type, symbol, volume, openPrice, closePrice, commission, swap, profit, comment, uploadBatch, account',
+  uploads: '++id, fileName, uploadedAt, tradeCount, accountName',
 });
 
-export async function saveTrades(trades, fileName) {
+export async function saveTrades(trades, fileName, meta) {
   const uploadBatch = Date.now();
+  const accountName = meta?.accountName || fileName.replace(/\.[^.]+$/, '');
 
   const upload = await db.uploads.add({
     fileName,
     uploadedAt: new Date().toISOString(),
     tradeCount: trades.length,
+    accountName,
   });
 
   const tradesWithBatch = trades.map((t) => ({
     ...t,
     uploadBatch,
     uploadId: upload,
+    account: accountName,
   }));
 
   await db.trades.bulkAdd(tradesWithBatch);
   return upload;
+}
+
+export async function getAccounts() {
+  const uploads = await db.uploads.toArray();
+  const accounts = [...new Set(uploads.map((u) => u.accountName).filter(Boolean))];
+  return accounts.sort();
 }
 
 export async function getAllTrades() {

@@ -33,6 +33,19 @@ function parseMT5Date(val) {
   return null;
 }
 
+// Extract account metadata from the top rows of MT5 report
+function extractMetadata(allRows) {
+  const meta = { accountName: '', accountNumber: '', company: '' };
+  for (let i = 0; i < Math.min(6, allRows.length); i++) {
+    const label = String(allRows[i]?.[0] || '').trim().toLowerCase();
+    const value = String(allRows[i]?.[3] || '').trim();
+    if (label.startsWith('name')) meta.accountName = value;
+    else if (label.startsWith('account')) meta.accountNumber = value;
+    else if (label.startsWith('company')) meta.company = value;
+  }
+  return meta;
+}
+
 // Handle MT5's raw array format (header row has duplicate column names)
 function processRawRows(allRows) {
   // Find header row - look for row containing "Time" and "Symbol" and "Profit"
@@ -45,7 +58,9 @@ function processRawRows(allRows) {
     }
   }
 
-  if (headerIdx === -1) return null; // Not an MT5 raw format
+  if (headerIdx === -1) return { trades: null, meta: null };
+
+  const meta = extractMetadata(allRows);
 
   const headerRow = allRows[headerIdx].map((c) => String(c).trim());
 
@@ -133,7 +148,7 @@ function processRawRows(allRows) {
     }
   }
 
-  return trades;
+  return { trades, meta };
 }
 
 // Handle CSV / named-column format
@@ -199,7 +214,7 @@ export function parseCSV(file) {
       complete: (results) => {
         try {
           const trades = processNamedRows(results.data);
-          resolve(trades);
+          resolve({ trades, meta: null });
         } catch (e) {
           reject(e);
         }
@@ -218,15 +233,17 @@ export function parseExcel(file) {
         const workbook = XLSX.read(data, { type: 'array', cellDates: false });
 
         let allTrades = [];
+        let fileMeta = null;
         for (const sheetName of workbook.SheetNames) {
           const sheet = workbook.Sheets[sheetName];
 
           // First try raw array format (handles duplicate headers like MT5 reports)
           const rawRows = XLSX.utils.sheet_to_json(sheet, { defval: '', header: 1 });
-          const rawTrades = processRawRows(rawRows);
+          const result = processRawRows(rawRows);
 
-          if (rawTrades && rawTrades.length > 0) {
-            allTrades = allTrades.concat(rawTrades);
+          if (result.trades && result.trades.length > 0) {
+            allTrades = allTrades.concat(result.trades);
+            if (result.meta) fileMeta = result.meta;
           } else {
             // Fallback to named column format
             const namedRows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
@@ -238,7 +255,7 @@ export function parseExcel(file) {
         if (allTrades.length === 0) {
           reject(new Error('No trades found in the file. Check if the format is correct.'));
         } else {
-          resolve(allTrades);
+          resolve({ trades: allTrades, meta: fileMeta });
         }
       } catch (e) {
         reject(e);

@@ -19,7 +19,7 @@ function formatNum(val, decimals = 2) {
   return Number(val).toFixed(decimals);
 }
 
-export default function TradesTable({ trades }) {
+export default function TradesTable({ trades, showAccount = false }) {
   const [sortField, setSortField] = useState('closeTime');
   const [sortDir, setSortDir] = useState('desc');
   const [search, setSearch] = useState('');
@@ -60,6 +60,9 @@ export default function TradesTable({ trades }) {
   }
 
   const columns = [
+    ...(showAccount ? [{ key: 'account', label: 'Account', render: (t) => (
+      <span className="px-2 py-0.5 rounded bg-primary/10 text-primary text-xs font-medium">{t.account || '-'}</span>
+    )}] : []),
     { key: 'closeTime', label: 'Close Time', render: (t) => formatDate(t.closeTime) },
     { key: 'symbol', label: 'Symbol', render: (t) => t.symbol || '-' },
     { key: 'type', label: 'Type', render: (t) => (

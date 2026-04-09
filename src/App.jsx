@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Upload, BarChart3, Calendar, Table2, LayoutDashboard } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Upload, BarChart3, Calendar, Table2, LayoutDashboard, Users } from 'lucide-react';
 import FileUpload from './components/FileUpload';
 import UploadHistory from './components/UploadHistory';
 import TradesTable from './components/TradesTable';
 import DailyCalendar from './components/DailyCalendar';
 import Dashboard from './components/Dashboard';
-import { getAllTrades } from './db/database';
+import { getAllTrades, getAccounts } from './db/database';
 
 const TABS = [
   { id: 'upload', label: 'Upload', icon: Upload },
@@ -17,19 +17,27 @@ const TABS = [
 function App() {
   const [tab, setTab] = useState('upload');
   const [trades, setTrades] = useState([]);
+  const [accounts, setAccounts] = useState([]);
+  const [selectedAccount, setSelectedAccount] = useState('all');
   const [refreshKey, setRefreshKey] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const loadTrades = useCallback(async () => {
     setLoading(true);
-    const data = await getAllTrades();
+    const [data, accts] = await Promise.all([getAllTrades(), getAccounts()]);
     setTrades(data);
+    setAccounts(accts);
     setLoading(false);
   }, []);
 
   useEffect(() => {
     loadTrades();
   }, [loadTrades, refreshKey]);
+
+  const filteredTrades = useMemo(() => {
+    if (selectedAccount === 'all') return trades;
+    return trades.filter((t) => t.account === selectedAccount);
+  }, [trades, selectedAccount]);
 
   function onUploadComplete() {
     setRefreshKey((k) => k + 1);
@@ -40,6 +48,7 @@ function App() {
   }
 
   const hasTrades = trades.length > 0;
+  const hasFiltered = filteredTrades.length > 0;
 
   return (
     <div className="min-h-screen bg-[#13131f]">
@@ -55,29 +64,51 @@ function App() {
               <span className="text-xs text-text-muted ml-1 hidden sm:block">MT5 Dashboard</span>
             </div>
 
-            {/* Tab Navigation */}
-            <nav className="flex gap-1">
-              {TABS.map(({ id, label, icon: Icon }) => {
-                const disabled = id !== 'upload' && !hasTrades;
-                return (
-                  <button
-                    key={id}
-                    onClick={() => !disabled && setTab(id)}
-                    disabled={disabled}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all
-                      ${tab === id
-                        ? 'bg-primary/15 text-primary'
-                        : disabled
-                          ? 'text-text-muted/40 cursor-not-allowed'
-                          : 'text-text-muted hover:text-text hover:bg-surface-light'
-                      }`}
+            <div className="flex items-center gap-3">
+              {/* Account Selector */}
+              {hasTrades && accounts.length > 1 && tab !== 'upload' && (
+                <div className="flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-text-muted" />
+                  <select
+                    value={selectedAccount}
+                    onChange={(e) => setSelectedAccount(e.target.value)}
+                    className="bg-surface-light border border-border rounded-lg px-2 py-1 text-xs text-text focus:outline-none focus:border-primary cursor-pointer"
                   >
-                    <Icon className="w-4 h-4" />
-                    <span className="hidden sm:inline">{label}</span>
-                  </button>
-                );
-              })}
-            </nav>
+                    <option value="all">All Accounts ({trades.length})</option>
+                    {accounts.map((a) => {
+                      const count = trades.filter((t) => t.account === a).length;
+                      return (
+                        <option key={a} value={a}>{a} ({count})</option>
+                      );
+                    })}
+                  </select>
+                </div>
+              )}
+
+              {/* Tab Navigation */}
+              <nav className="flex gap-1">
+                {TABS.map(({ id, label, icon: Icon }) => {
+                  const disabled = id !== 'upload' && !hasTrades;
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => !disabled && setTab(id)}
+                      disabled={disabled}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all
+                        ${tab === id
+                          ? 'bg-primary/15 text-primary'
+                          : disabled
+                            ? 'text-text-muted/40 cursor-not-allowed'
+                            : 'text-text-muted hover:text-text hover:bg-surface-light'
+                        }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span className="hidden sm:inline">{label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
           </div>
         </div>
       </header>
@@ -89,7 +120,7 @@ function App() {
           <div>
             <div className="text-center mb-8">
               <h1 className="text-2xl font-bold text-text">Import Trading Data</h1>
-              <p className="text-sm text-text-muted mt-1">Upload your MT5 trade history report to get started</p>
+              <p className="text-sm text-text-muted mt-1">Upload your MT5 trade history reports to get started</p>
             </div>
             <FileUpload onUploadComplete={onUploadComplete} />
             <UploadHistory refreshKey={refreshKey} onDataChange={onDataChange} />
@@ -111,17 +142,35 @@ function App() {
         {/* Dashboard Tab */}
         {tab === 'dashboard' && hasTrades && (
           <div>
-            <h1 className="text-2xl font-bold text-text mb-6">Trading Dashboard</h1>
-            <Dashboard trades={trades} />
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-2xl font-bold text-text">
+                {selectedAccount === 'all' ? 'All Accounts' : selectedAccount}
+              </h1>
+              <span className="text-sm text-text-muted">{filteredTrades.length} trades</span>
+            </div>
+            {hasFiltered ? (
+              <Dashboard trades={filteredTrades} />
+            ) : (
+              <p className="text-text-muted text-center py-10">No trades for this account.</p>
+            )}
           </div>
         )}
 
         {/* Calendar Tab */}
         {tab === 'calendar' && hasTrades && (
           <div className="max-w-3xl mx-auto">
-            <h1 className="text-2xl font-bold text-text mb-6">Daily Calendar</h1>
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-2xl font-bold text-text">Daily Calendar</h1>
+              <span className="text-sm text-text-muted">
+                {selectedAccount === 'all' ? 'All Accounts' : selectedAccount}
+              </span>
+            </div>
             <div className="bg-surface rounded-xl border border-border p-6">
-              <DailyCalendar trades={trades} />
+              {hasFiltered ? (
+                <DailyCalendar trades={filteredTrades} />
+              ) : (
+                <p className="text-text-muted text-center py-10">No trades for this account.</p>
+              )}
             </div>
           </div>
         )}
@@ -129,8 +178,17 @@ function App() {
         {/* Trades Tab */}
         {tab === 'trades' && hasTrades && (
           <div>
-            <h1 className="text-2xl font-bold text-text mb-6">Trade History</h1>
-            <TradesTable trades={trades} />
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-2xl font-bold text-text">Trade History</h1>
+              <span className="text-sm text-text-muted">
+                {selectedAccount === 'all' ? 'All Accounts' : selectedAccount}
+              </span>
+            </div>
+            {hasFiltered ? (
+              <TradesTable trades={filteredTrades} showAccount={selectedAccount === 'all' && accounts.length > 1} />
+            ) : (
+              <p className="text-text-muted text-center py-10">No trades for this account.</p>
+            )}
           </div>
         )}
 

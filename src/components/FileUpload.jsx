@@ -15,9 +15,10 @@ export default function FileUpload({ onUploadComplete }) {
     setError(null);
     setResult(null);
     try {
-      const trades = await parseFile(file);
-      await saveTrades(trades, file.name);
-      setResult({ fileName: file.name, count: trades.length });
+      const { trades, meta } = await parseFile(file);
+      await saveTrades(trades, file.name, meta);
+      const label = meta?.accountName || file.name;
+      setResult({ fileName: label, count: trades.length });
       onUploadComplete?.();
     } catch (e) {
       setError(e.message);

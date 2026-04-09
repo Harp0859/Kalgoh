@@ -58,7 +58,10 @@ export default function UploadHistory({ refreshKey, onDataChange }) {
         {uploads.map((u) => (
           <div key={u.id} className="flex items-center justify-between py-2 px-3 bg-surface-light rounded-lg">
             <div>
-              <p className="text-sm text-text">{u.fileName}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-text">{u.accountName || u.fileName}</p>
+                {u.accountName && <span className="text-[10px] text-text-muted">({u.fileName})</span>}
+              </div>
               <p className="text-xs text-text-muted">
                 {u.tradeCount} trades &middot; {format(parseISO(u.uploadedAt), 'MMM dd, yyyy HH:mm')}
               </p>
