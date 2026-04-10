@@ -22,7 +22,7 @@ export default function DrawdownChart({ drawdownCurve, maxDrawdown }) {
           <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
           <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#6a6a64' }} tickFormatter={(v) => v.slice(5)} axisLine={{ stroke: '#2a2a2a' }} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: '#6a6a64' }} tickFormatter={(v) => `$${v}`} axisLine={false} tickLine={false} />
-          <Tooltip content={<ChartTooltip />} />
+          <Tooltip content={<ChartTooltip />} cursor={{ stroke: '#6a6a64', strokeDasharray: '3 3' }} />
           <Area type="monotone" dataKey="drawdown" stroke="#f87171" fill="url(#ddGrad)" strokeWidth={1.5} name="Drawdown" />
         </AreaChart>
       </ResponsiveContainer>

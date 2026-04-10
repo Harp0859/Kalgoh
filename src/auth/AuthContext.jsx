@@ -25,7 +25,7 @@ export function AuthProvider({ children }) {
   async function signInWithEmail(email) {
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: window.location.origin + window.location.pathname },
+      options: { emailRedirectTo: window.location.origin },
     });
     if (error) throw error;
   }
@@ -42,7 +42,7 @@ export function AuthProvider({ children }) {
   async function changeEmail(newEmail) {
     const { error } = await supabase.auth.updateUser(
       { email: newEmail },
-      { emailRedirectTo: window.location.origin + window.location.pathname },
+      { emailRedirectTo: window.location.origin },
     );
     if (error) throw error;
   }

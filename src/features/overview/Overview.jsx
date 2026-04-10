@@ -85,7 +85,7 @@ export default function Overview({ stats, startingBalance, hasBalanceOps, trades
             <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
             <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#6a6a64' }} tickFormatter={(v) => v.slice(5)} axisLine={{ stroke: '#2a2a2a' }} tickLine={false} />
             <YAxis tick={{ fontSize: 9, fill: '#6a6a64' }} tickFormatter={(v) => `$${v}`} axisLine={false} tickLine={false} width={45} />
-            <Tooltip content={<EquityTooltip />} />
+            <Tooltip content={<EquityTooltip />} cursor={{ stroke: '#6a6a64', strokeDasharray: '3 3' }} />
             {startingBalance > 0 && <ReferenceLine y={startingBalance} stroke="#6a6a64" strokeDasharray="4 4" />}
             {stats.equityCurve.filter((d) => d.balanceOp > 0).map((d, i) => (
               <ReferenceLine key={`d${i}`} x={d.date} stroke="#60a5fa" strokeDasharray="3 3" strokeOpacity={0.4} />
@@ -118,9 +118,9 @@ export default function Overview({ stats, startingBalance, hasBalanceOps, trades
               <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
               <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#6a6a64' }} tickFormatter={(v) => v.slice(5)} axisLine={{ stroke: '#2a2a2a' }} tickLine={false} />
               <YAxis tick={{ fontSize: 9, fill: '#6a6a64' }} tickFormatter={(v) => `$${v}`} axisLine={false} tickLine={false} width={40} />
-              <Tooltip content={<ChartTooltip />} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
               <ReferenceLine y={0} stroke="#444" />
-              <Bar dataKey="profit" name="P/L" radius={[3, 3, 0, 0]} animationDuration={1200} activeBar={{ fill: 'rgba(255,255,255,0.08)', radius: [3, 3, 0, 0] }}>
+              <Bar dataKey="profit" name="P/L" radius={[3, 3, 0, 0]} animationDuration={1200} activeBar={{ fill: 'rgba(255,255,255,0.12)', radius: [3, 3, 0, 0] }}>
                 {stats.dailyPnL.map((entry, i) => <Cell key={i} fill={entry.profit >= 0 ? '#4ade80' : '#f87171'} fillOpacity={0.8} />)}
               </Bar>
             </BarChart>

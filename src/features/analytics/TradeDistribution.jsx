@@ -16,8 +16,8 @@ export default function TradeDistribution({ distribution, avgWin, avgLoss, expec
           <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
           <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#6a6a64' }} axisLine={{ stroke: '#2a2a2a' }} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: '#6a6a64' }} axisLine={false} tickLine={false} />
-          <Tooltip content={<ChartTooltip />} />
-          <Bar dataKey="count" name="Trades" radius={[3, 3, 0, 0]}>
+          <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+          <Bar dataKey="count" name="Trades" radius={[3, 3, 0, 0]} activeBar={{ fill: 'rgba(255,255,255,0.12)', radius: [3, 3, 0, 0] }}>
             {distribution.map((entry, i) => (
               <Cell key={i} fill={entry.mid >= 0 ? '#4ade80' : '#f87171'} fillOpacity={0.7} />
             ))}
