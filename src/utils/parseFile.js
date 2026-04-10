@@ -35,7 +35,7 @@ function parseMT5Date(val) {
 
 // Extract account metadata from the top rows of MT5 report
 function extractMetadata(allRows) {
-  const meta = { accountName: '', accountNumber: '', company: '' };
+  const meta = { accountName: '', accountNumber: '', company: '', startingBalance: 0, balanceOperations: [] };
   for (let i = 0; i < Math.min(6, allRows.length); i++) {
     const label = String(allRows[i]?.[0] || '').trim().toLowerCase();
     const value = String(allRows[i]?.[3] || '').trim();
@@ -43,6 +43,38 @@ function extractMetadata(allRows) {
     else if (label.startsWith('account')) meta.accountNumber = value;
     else if (label.startsWith('company')) meta.company = value;
   }
+
+  // Extract ALL balance operations from Deals section (deposits, withdrawals, transfers)
+  for (let i = 0; i < allRows.length; i++) {
+    if (String(allRows[i]?.[0]).trim().toLowerCase() === 'deals') {
+      // Scan all rows in Deals for "balance" type entries
+      for (let j = i + 2; j < allRows.length; j++) {
+        const firstCell = String(allRows[j]?.[0] || '').trim().toLowerCase();
+        // Stop at next section
+        if (firstCell === 'open positions' || firstCell === 'working orders' || firstCell === 'results' || firstCell === '') {
+          if (firstCell !== '') break;
+          continue;
+        }
+
+        const type = String(allRows[j]?.[3] || '').trim().toLowerCase();
+        if (type === 'balance') {
+          const time = parseMT5Date(allRows[j]?.[0]);
+          const amount = parseNumber(allRows[j]?.[11]); // Profit column = deposit/withdrawal amount
+          const balanceAfter = parseNumber(allRows[j]?.[12]); // Balance column = running balance
+          const comment = String(allRows[j]?.[13] || '').trim();
+
+          meta.balanceOperations.push({ time, amount, balanceAfter, comment });
+
+          // First balance entry = starting balance
+          if (meta.startingBalance === 0 && balanceAfter > 0) {
+            meta.startingBalance = balanceAfter;
+          }
+        }
+      }
+      break;
+    }
+  }
+
   return meta;
 }
 
@@ -105,9 +137,15 @@ function processRawRows(allRows) {
     const row = allRows[i];
     if (!row || row.length === 0) continue;
 
-    // Skip summary rows at the bottom
+    // Stop at section breaks (MT5 reports have: Positions, Orders, Deals, Open Positions, etc.)
     const firstCell = String(row[0] || '').trim().toLowerCase();
     if (!firstCell) continue;
+    const SECTION_HEADERS = ['orders', 'deals', 'open positions', 'working orders', 'results',
+      'balance:', 'credit facility:', 'floating p/l:', 'equity:', 'margin:'];
+    if (SECTION_HEADERS.some((s) => firstCell === s || firstCell.startsWith(s))) {
+      break;
+    }
+    // Skip summary rows at the bottom
     if (firstCell.includes('profit factor') || firstCell.includes('total trades') ||
         firstCell.includes('recovery') || firstCell.includes('sharpe') ||
         firstCell.includes('balance drawdown') || firstCell.includes('largest') ||
