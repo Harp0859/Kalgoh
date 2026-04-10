@@ -35,6 +35,20 @@ export function AuthProvider({ children }) {
     if (error) throw error;
   }
 
+  async function signInWithPassword(email, password) {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  }
+
+  async function signUpWithPassword(email, password) {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: window.location.origin },
+    });
+    if (error) throw error;
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
   }
@@ -48,7 +62,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithEmail, verifyOtp, signOut, changeEmail }}>
+    <AuthContext.Provider value={{ user, loading, signInWithEmail, verifyOtp, signInWithPassword, signUpWithPassword, signOut, changeEmail }}>
       {children}
     </AuthContext.Provider>
   );
