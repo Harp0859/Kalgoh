@@ -1,15 +1,26 @@
 import { useRef, useMemo } from 'react';
-import { format } from 'date-fns';
 import { Copy, Download, TrendingUp, TrendingDown, Trophy, Clock } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { getTradesForDate, formatDuration } from '../../utils/tradeStats';
 import { differenceInMinutes, parseISO } from 'date-fns';
+import { dateKeyUTC, formatDateLongUTC } from '../../utils/dateFormat';
 
 export default function TodayCard({ trades }) {
   const cardRef = useRef(null);
 
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const todayLabel = format(new Date(), 'EEEE, MMMM d');
+  // "Today" = latest trading day in UTC (matches server time).
+  // If there are no trades today, fall back to the most recent trading day so
+  // the card isn't empty on weekends / after market close.
+  const latestTradeDate = useMemo(() => {
+    if (!trades || trades.length === 0) return null;
+    const sorted = [...trades].filter((t) => t.closeTime).sort((a, b) =>
+      (b.closeTime || '').localeCompare(a.closeTime || ''),
+    );
+    return sorted[0]?.closeTime || null;
+  }, [trades]);
+
+  const today = latestTradeDate ? dateKeyUTC(latestTradeDate) : dateKeyUTC(new Date());
+  const todayLabel = today ? formatDateLongUTC(today + 'T00:00:00Z') : '';
 
   const todayTrades = useMemo(() => getTradesForDate(trades, today), [trades, today]);
 

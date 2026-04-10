@@ -115,24 +115,26 @@ export async function undeployAccount(token: string, accountId: string): Promise
   }
 }
 
-// Wait until the account is DEPLOYED + connected to broker.
-// Polls every 2s up to maxMs. Returns the final state on success.
+// Wait until the account is DEPLOYED + CONNECTED to the broker.
+// MetaStats requires an active broker connection, not just a deployed terminal,
+// so we poll until connectionStatus === 'CONNECTED'.
+// Polls every 3s up to maxMs. Returns the final state on success.
 export async function waitUntilConnected(
   token: string,
   accountId: string,
-  maxMs = 90000,
+  maxMs = 120000,
 ): Promise<{ state: string; connectionStatus?: string }> {
   const deadline = Date.now() + maxMs;
   let last: { state: string; connectionStatus?: string } = { state: 'UNKNOWN' };
   while (Date.now() < deadline) {
     last = await getAccountState(token, accountId);
-    // For MetaStats we don't strictly need a live terminal connection —
-    // DEPLOYED is enough. But CONNECTED means history is fresher.
-    if (last.state === 'DEPLOYED') return last;
-    await new Promise((r) => setTimeout(r, 2000));
+    if (last.state === 'DEPLOYED' && last.connectionStatus === 'CONNECTED') {
+      return last;
+    }
+    await new Promise((r) => setTimeout(r, 3000));
   }
   throw new Error(
-    `Account not ready within ${maxMs}ms. Last state: ${last.state} / ${last.connectionStatus || '-'}`,
+    `Account not ready within ${maxMs}ms. state=${last.state} connectionStatus=${last.connectionStatus || '-'}`,
   );
 }
 

@@ -134,20 +134,27 @@ function AuthenticatedApp({ signOut }) {
     loadBalance();
   }, [selectedAccount, accounts, refreshKey]);
 
-  // Filter trades
+  // Trades filtered by account only (used as "all history for this account")
+  const accountTrades = useMemo(() => {
+    if (selectedAccount === 'all') return trades;
+    return trades.filter((t) => t.account === selectedAccount);
+  }, [trades, selectedAccount]);
+
+  // Then apply the date filter on top
   const filteredTrades = useMemo(() => {
-    let result = trades;
-    if (selectedAccount !== 'all') result = result.filter((t) => t.account === selectedAccount);
+    let result = accountTrades;
     if (dateFrom) result = result.filter((t) => (t.closeTime || t.openTime || '') >= dateFrom);
     if (dateTo) result = result.filter((t) => (t.closeTime || t.openTime || '') <= dateTo + 'T23:59:59');
     return result;
-  }, [trades, selectedAccount, dateFrom, dateTo]);
+  }, [accountTrades, dateFrom, dateTo]);
 
-  // Compute stats once, share across Overview + Analytics
+  // Compute stats once, share across Overview + Analytics.
+  // Pass accountTrades + dateFrom so the equity curve can compute the
+  // real balance at the start of the filtered window.
   const stats = useMemo(() => {
     if (filteredTrades.length === 0) return null;
-    return getSummaryStats(filteredTrades, startingBalance, balanceOps);
-  }, [filteredTrades, startingBalance, balanceOps]);
+    return getSummaryStats(filteredTrades, startingBalance, balanceOps, accountTrades, dateFrom || null);
+  }, [filteredTrades, startingBalance, balanceOps, accountTrades, dateFrom]);
 
   const hasDateFilter = dateFrom || dateTo;
   const hasTrades = trades.length > 0;

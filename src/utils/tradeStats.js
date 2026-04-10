@@ -1,4 +1,5 @@
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isValid, differenceInMinutes } from 'date-fns';
+import { dateKeyUTC, hourUTC, dayOfWeekUTC } from './dateFormat';
 
 function safeParseDate(dateStr) {
   if (!dateStr) return null;
@@ -15,7 +16,7 @@ export function getDailyPnL(trades) {
   for (const trade of trades) {
     const date = safeParseDate(trade.closeTime) || safeParseDate(trade.openTime);
     if (!date) continue;
-    const key = format(date, 'yyyy-MM-dd');
+    const key = dateKeyUTC(date);
     if (!daily[key]) daily[key] = { date: key, profit: 0, trades: 0, wins: 0, losses: 0 };
     daily[key].profit += trade.profit || 0;
     daily[key].trades += 1;
@@ -56,7 +57,7 @@ function getHourlyStats(trades) {
   for (const trade of trades) {
     const date = safeParseDate(trade.closeTime) || safeParseDate(trade.openTime);
     if (!date) continue;
-    const h = date.getHours();
+    const h = hourUTC(date);
     hours[h].profit += trade.profit || 0;
     hours[h].trades += 1;
     if ((trade.profit || 0) > 0) hours[h].wins += 1;
@@ -91,7 +92,7 @@ function getDayOfWeekStats(trades) {
   for (const trade of trades) {
     const date = safeParseDate(trade.closeTime) || safeParseDate(trade.openTime);
     if (!date) continue;
-    const d = date.getDay();
+    const d = dayOfWeekUTC(date);
     stats[d].profit += trade.profit || 0;
     stats[d].trades += 1;
     if ((trade.profit || 0) > 0) stats[d].wins += 1;
@@ -198,11 +199,19 @@ export function getTradesForDate(trades, dateKey) {
   return trades.filter((t) => {
     const date = safeParseDate(t.closeTime) || safeParseDate(t.openTime);
     if (!date) return false;
-    return format(date, 'yyyy-MM-dd') === dateKey;
+    return dateKeyUTC(date) === dateKey;
   });
 }
 
-export function getSummaryStats(trades, startingBalance = 0, balanceOps = []) {
+/**
+ * @param trades — filtered trades (already filtered by account/date).
+ * @param startingBalance — the initial deposit (before any activity).
+ * @param balanceOps — filtered balance ops (already filtered by account).
+ * @param allTrades — OPTIONAL: unfiltered trades, used to compute the
+ *        "balance at start of date range" when the user has a date filter.
+ * @param dateFrom — OPTIONAL: ISO date key for filter start (yyyy-MM-dd).
+ */
+export function getSummaryStats(trades, startingBalance = 0, balanceOps = [], allTrades = null, dateFrom = null) {
   const totalProfit = trades.reduce((s, t) => s + (t.profit || 0), 0);
   const totalCommission = trades.reduce((s, t) => s + (t.commission || 0), 0);
   const totalSwap = trades.reduce((s, t) => s + (t.swap || 0), 0);
@@ -226,36 +235,57 @@ export function getSummaryStats(trades, startingBalance = 0, balanceOps = []) {
   const bestDay = daily.length > 0 ? daily.reduce((best, d) => d.profit > best.profit ? d : best, daily[0]) : null;
   const worstDay = daily.length > 0 ? daily.reduce((worst, d) => d.profit < worst.profit ? d : worst, daily[0]) : null;
 
-  // Build daily deposits/withdrawals map
-  // Skip the first balance op per account (that's the starting deposit, already in startingBalance)
-  // Skip inter-account transfers when viewing combined accounts (they cancel out)
-  const dailyBalanceOps = {};
-  const balanceEvents = [];
-  let totalDeposits = 0;
-  let totalWithdrawals = 0;
+  // Classify balance ops:
+  // - Skip first op per account (initial deposit = startingBalance)
+  // - Skip inter-account transfers when viewing multi-account (net to zero)
+  // - Remaining ops are "real" movements that affect the equity curve
   const seenFirstPerAccount = {};
   const accountSet = new Set(balanceOps.map((op) => op.account).filter(Boolean));
   const isMultiAccount = accountSet.size > 1;
 
+  const realOps = [];
   for (const op of balanceOps) {
     if (!op.time) continue;
-
-    // Skip first balance op per account (it's the initial deposit = startingBalance)
     const acct = op.account || '_default';
     if (!seenFirstPerAccount[acct]) {
       seenFirstPerAccount[acct] = true;
       continue;
     }
-
-    // Skip inter-account transfers when viewing all accounts (they net to zero)
     if (isMultiAccount) {
       const comment = (op.comment || '').toLowerCase();
-      if (comment.includes('transfer in from') || comment.includes('transfer out to')) {
-        continue;
-      }
+      if (comment.includes('transfer in from') || comment.includes('transfer out to')) continue;
     }
+    realOps.push(op);
+  }
 
-    const key = op.time.slice(0, 10);
+  // If a date filter is active, compute the "starting balance" for the window
+  // by applying all pre-window trades + balance ops to the initial deposit.
+  // This way the filtered equity curve starts from the real balance on dateFrom.
+  let windowStart = startingBalance;
+  if (dateFrom && allTrades) {
+    // Pre-window trades (close_time before dateFrom)
+    for (const t of allTrades) {
+      const key = dateKeyUTC(t.closeTime || t.openTime);
+      if (key && key < dateFrom) windowStart += t.profit || 0;
+    }
+    // Pre-window balance ops
+    for (const op of realOps) {
+      const key = dateKeyUTC(op.time);
+      if (key && key < dateFrom) windowStart += op.amount || 0;
+    }
+  }
+
+  // Now filter realOps to only those IN the window (if dateFrom is set).
+  // Build daily deposits/withdrawals map from the windowed ops.
+  const dailyBalanceOps = {};
+  const balanceEvents = [];
+  let totalDeposits = 0;
+  let totalWithdrawals = 0;
+
+  for (const op of realOps) {
+    const key = dateKeyUTC(op.time) || op.time.slice(0, 10);
+    // Skip ops outside the window
+    if (dateFrom && key < dateFrom) continue;
     if (!dailyBalanceOps[key]) dailyBalanceOps[key] = 0;
     dailyBalanceOps[key] += op.amount || 0;
     if (op.amount > 0) totalDeposits += op.amount;
@@ -266,23 +296,35 @@ export function getSummaryStats(trades, startingBalance = 0, balanceOps = []) {
   // Build TWO equity curves:
   // 1. actualBalance = real account balance (starting + trades + deposits/withdrawals)
   // 2. tradingEquity = starting + trading P/L only (for drawdown calculation)
-  let actualBalance = startingBalance;
-  let tradingEquity = startingBalance;
-  const equityCurve = daily.map((d) => {
-    const balOp = dailyBalanceOps[d.date] || 0;
-    actualBalance += d.profit + balOp;
-    tradingEquity += d.profit; // pure trading performance, no deposits/withdrawals
+  //
+  // IMPORTANT: we must iterate over the UNION of trading days AND balance-op
+  // days, so a pure-deposit/withdrawal day (no trades) still moves the curve.
+  const dailyByKey = Object.fromEntries(daily.map((d) => [d.date, d]));
+  const allDates = new Set([
+    ...daily.map((d) => d.date),
+    ...Object.keys(dailyBalanceOps),
+  ]);
+  const sortedDates = [...allDates].sort();
+
+  let actualBalance = windowStart;
+  let tradingEquity = windowStart;
+  const equityCurve = sortedDates.map((date) => {
+    const dayData = dailyByKey[date];
+    const dayProfit = dayData?.profit || 0;
+    const balOp = dailyBalanceOps[date] || 0;
+    actualBalance += dayProfit + balOp;
+    tradingEquity += dayProfit; // pure trading performance, no deposits/withdrawals
     return {
-      date: d.date,
+      date,
       balance: actualBalance,        // what your account actually shows
       tradingEquity,                  // pure trading performance
-      profit: d.profit,
+      profit: dayProfit,
       balanceOp: balOp,               // net deposit/withdrawal that day
     };
   });
 
   // Max drawdown based on TRADING EQUITY only (withdrawals are not drawdowns!)
-  let tradingPeak = startingBalance;
+  let tradingPeak = windowStart;
   let maxDrawdown = 0;
   for (const point of equityCurve) {
     if (point.tradingEquity > tradingPeak) tradingPeak = point.tradingEquity;
@@ -290,10 +332,10 @@ export function getSummaryStats(trades, startingBalance = 0, balanceOps = []) {
     if (dd > maxDrawdown) maxDrawdown = dd;
   }
 
-  // Growth % based on trading P/L only
-  const currentBalance = equityCurve.length > 0 ? equityCurve[equityCurve.length - 1].balance : startingBalance;
-  const tradingPnLOnly = equityCurve.length > 0 ? equityCurve[equityCurve.length - 1].tradingEquity - startingBalance : 0;
-  const growthPct = startingBalance > 0 ? (tradingPnLOnly / startingBalance) * 100 : 0;
+  // Growth % based on trading P/L only, relative to the window start
+  const currentBalance = equityCurve.length > 0 ? equityCurve[equityCurve.length - 1].balance : windowStart;
+  const tradingPnLOnly = equityCurve.length > 0 ? equityCurve[equityCurve.length - 1].tradingEquity - windowStart : 0;
+  const growthPct = windowStart > 0 ? (tradingPnLOnly / windowStart) * 100 : 0;
 
   // Symbol breakdown
   const symbolStats = {};
@@ -311,7 +353,7 @@ export function getSummaryStats(trades, startingBalance = 0, balanceOps = []) {
   const dayOfWeekStats = getDayOfWeekStats(trades);
   const sessionStats = getSessionStats(trades);
   const tradeDistribution = getTradeDistribution(trades);
-  const drawdownCurve = getDrawdownCurve(equityCurve, startingBalance);
+  const drawdownCurve = getDrawdownCurve(equityCurve, windowStart);
 
   return {
     totalTrades: trades.length,
@@ -319,7 +361,7 @@ export function getSummaryStats(trades, startingBalance = 0, balanceOps = []) {
     wins: wins.length, losses: losses.length, winRate,
     avgWin, avgLoss, profitFactor, expectancy,
     bestTrade, worstTrade, bestDay, worstDay, maxDrawdown,
-    startingBalance, currentBalance, growthPct, totalDeposits, totalWithdrawals, balanceEvents,
+    startingBalance: windowStart, currentBalance, growthPct, totalDeposits, totalWithdrawals, balanceEvents,
     equityCurve, drawdownCurve, dailyPnL: daily,
     symbolStats: Object.values(symbolStats).sort((a, b) => b.profit - a.profit),
     streaks, hourlyStats, durationStats,
@@ -332,7 +374,7 @@ export function getAvailableMonths(trades) {
   for (const trade of trades) {
     const date = safeParseDate(trade.closeTime) || safeParseDate(trade.openTime);
     if (!date) continue;
-    months.add(format(date, 'yyyy-MM'));
+    months.add(dateKeyUTC(date).slice(0, 7));
   }
   return [...months].sort();
 }

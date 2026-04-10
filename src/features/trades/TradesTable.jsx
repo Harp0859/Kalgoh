@@ -1,18 +1,10 @@
 import { useState, useMemo } from 'react';
-import { format, parseISO, isValid } from 'date-fns';
 import { ArrowUpDown, Search, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { formatDateTimeUTC } from '../../utils/dateFormat';
 
 const PAGE_SIZE = 50;
 
-function formatDate(dateStr) {
-  if (!dateStr) return '-';
-  try {
-    const d = parseISO(dateStr);
-    return isValid(d) ? format(d, 'MMM dd, yyyy HH:mm') : '-';
-  } catch {
-    return '-';
-  }
-}
+const formatDate = formatDateTimeUTC;
 
 function formatNum(val, decimals = 2) {
   if (val === undefined || val === null) return '-';

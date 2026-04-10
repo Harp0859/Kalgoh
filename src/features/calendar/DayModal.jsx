@@ -1,17 +1,9 @@
 import { useState, useEffect } from 'react';
-import { format, parseISO, isValid } from 'date-fns';
 import { X, StickyNote, Save } from 'lucide-react';
 import { getNote, saveNote } from '../../db/database';
+import { formatTimeUTC, formatDateLongUTC } from '../../utils/dateFormat';
 
-function formatTime(dateStr) {
-  if (!dateStr) return '-';
-  try {
-    const d = parseISO(dateStr);
-    return isValid(d) ? format(d, 'HH:mm:ss') : '-';
-  } catch {
-    return '-';
-  }
-}
+const formatTime = formatTimeUTC;
 
 export default function DayModal({ dateKey, trades, account, onClose }) {
   const [note, setNote] = useState('');
@@ -55,7 +47,7 @@ export default function DayModal({ dateKey, trades, account, onClose }) {
         <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="text-xl font-bold text-text-light">
-              {format(new Date(dateKey), 'EEEE, MMMM d, yyyy')}
+              {formatDateLongUTC(dateKey + 'T00:00:00Z')}
             </h3>
             <div className="flex items-center gap-3 mt-1">
               <span className="text-xs text-text-card-muted">{trades.length} trades</span>
