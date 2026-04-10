@@ -35,6 +35,14 @@ function StatusBadge({ status, lastError }) {
       </span>
     );
   }
+  if (status === 'syncing') {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-accent-blue bg-accent-blue/10 rounded-md px-2 py-0.5">
+        <Loader2 className="w-3 h-3 animate-spin" />
+        Syncing
+      </span>
+    );
+  }
   if (status === 'error') {
     return (
       <span
@@ -169,7 +177,7 @@ export default function BrokerStatus({ onDataChange }) {
                 <div className="flex items-center gap-1 ml-3 shrink-0">
                   <button
                     onClick={() => handleSync(c)}
-                    disabled={syncingId === c.id || c.status === 'provisioning'}
+                    disabled={syncingId === c.id || c.status === 'provisioning' || c.status === 'syncing'}
                     className="p-2 rounded-lg text-text-card-muted hover:text-text-light hover:bg-card disabled:opacity-40"
                     title="Sync now"
                   >

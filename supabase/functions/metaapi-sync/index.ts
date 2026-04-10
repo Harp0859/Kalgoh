@@ -103,8 +103,31 @@ Deno.serve(async (req) => {
   }> = [];
 
   for (const conn of connections) {
+    // Atomic lock: only proceed if we can flip the row from a
+    // non-syncing status to 'syncing'. If another worker already locked
+    // it, we skip so we don't race each other on deploy/undeploy.
+    // Stale locks (>5 minutes old) are reclaimable to recover from crashes.
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const { data: locked, error: lockErr } = await admin
+      .from('broker_connections')
+      .update({ status: 'syncing', updated_at: new Date().toISOString() })
+      .eq('id', conn.id)
+      .or(`status.neq.syncing,updated_at.lt.${fiveMinutesAgo}`)
+      .select()
+      .maybeSingle();
+
+    if (lockErr || !locked) {
+      results.push({
+        connectionId: conn.id,
+        account: conn.account_name,
+        ok: false,
+        error: 'Another sync is already in progress for this account.',
+      });
+      continue;
+    }
+
     try {
-      const summary = await syncOne(admin, metaapiToken, conn);
+      const summary = await syncOne(admin, metaapiToken, locked);
       results.push({
         connectionId: conn.id,
         account: conn.account_name,
