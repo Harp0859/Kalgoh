@@ -5,7 +5,7 @@ const NAV = [
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'calendar', label: 'Calendar', icon: Calendar },
   { id: 'trades', label: 'Trades', icon: Table2 },
-  { id: 'upload', label: 'Upload', icon: Upload },
+  { id: 'upload', label: 'Connect', icon: Upload },
 ];
 
 export default function Sidebar({ tab, setTab, hasTrades, mobileOpen, setMobileOpen }) {

@@ -25,7 +25,7 @@ const PAGE_META = {
   analytics: { title: 'Analytics', subtitle: 'Deep dive into your edge' },
   calendar:  { title: 'Calendar',  subtitle: 'Daily profit and loss breakdown' },
   trades:    { title: 'Trades',    subtitle: 'Complete trade history' },
-  upload:    { title: 'Upload',    subtitle: 'Import your MT5 trade history reports' },
+  upload:    { title: 'Connect',   subtitle: 'Link a broker or upload MT5 reports' },
   settings:  { title: 'Settings',  subtitle: 'Configure your dashboard' },
 };
 
