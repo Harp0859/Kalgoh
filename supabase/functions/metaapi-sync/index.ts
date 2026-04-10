@@ -19,6 +19,7 @@ import {
   deployAccount,
   undeployAccount,
   waitUntilConnected,
+  getAccountState,
 } from '../_shared/metaapi.ts';
 
 // Sync looks back this many hours beyond last_sync_at to catch any trades
@@ -156,14 +157,23 @@ async function syncOne(
   const startIso = startDate.toISOString();
   const endIso = now.toISOString();
 
-  // 0. Deploy the account (idempotent — no-op if already deployed).
-  //    This is the cost-saving step: between syncs, accounts sit in the
-  //    UNDEPLOYED state at $0.00105/hr instead of $0.0126/hr deployed.
-  await deployAccount(token, conn.metaapi_account_id);
-  await waitUntilConnected(token, conn.metaapi_account_id);
-  // Even after connectionStatus=CONNECTED, MetaStats needs a few extra
-  // seconds for its data pipeline to catch up. Give it breathing room.
-  await new Promise((r) => setTimeout(r, 8000));
+  // 0. Check current state. If the account is already deployed + connected,
+  //    skip the deploy/wait step entirely — huge speedup for consecutive
+  //    syncs, and avoids hammering MetaApi's provisioning API.
+  const initialState = await getAccountState(token, conn.metaapi_account_id);
+  const wasAlreadyReady =
+    initialState.state === 'DEPLOYED' && initialState.connectionStatus === 'CONNECTED';
+
+  if (!wasAlreadyReady) {
+    // Deploy the account (idempotent — no-op if already deployed). Between
+    // syncs, accounts sit in the UNDEPLOYED state at $0.00105/hr instead of
+    // $0.0126/hr deployed.
+    await deployAccount(token, conn.metaapi_account_id);
+    await waitUntilConnected(token, conn.metaapi_account_id);
+    // Even after connectionStatus=CONNECTED, MetaStats needs a few extra
+    // seconds for its data pipeline to catch up. Give it breathing room.
+    await new Promise((r) => setTimeout(r, 8000));
+  }
 
   try {
     // 1. Fetch metrics (side effect: triggers MetaStats to refresh its cached
@@ -267,10 +277,14 @@ async function syncOne(
 
     return { newTrades, newBalanceOps };
   } finally {
-    // 8. Always undeploy — even on failure — to keep costs low.
-    //    Swallow errors here so we don't mask the original sync error.
-    try {
-      await undeployAccount(token, conn.metaapi_account_id);
-    } catch { /* noop */ }
+    // 8. Undeploy to keep costs low — but only if WE deployed it in this
+    //    call. If it was already warm (e.g. another sync is running or user
+    //    clicked sync twice), leave it alone so the next sync is instant.
+    //    Swallow errors so we don't mask the original sync error.
+    if (!wasAlreadyReady) {
+      try {
+        await undeployAccount(token, conn.metaapi_account_id);
+      } catch { /* noop */ }
+    }
   }
 }
