@@ -79,7 +79,7 @@ export default function LoginPage() {
                 disabled={loading || !email}
                 className="mt-6 w-full flex items-center justify-center gap-2 px-6 py-3 bg-profit/10 hover:bg-profit/15 text-profit rounded-xl text-sm font-semibold transition-colors disabled:opacity-40"
               >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Send Code <ArrowRight className="w-4 h-4" /></>}
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Continue <ArrowRight className="w-4 h-4" /></>}
               </button>
             </form>
           ) : (
@@ -88,8 +88,11 @@ export default function LoginPage() {
                 <CheckCircle className="w-4 h-4 text-profit" />
                 <h2 className="text-xl font-semibold text-text-light">Check your email</h2>
               </div>
-              <p className="text-sm text-text-card-muted mb-6">
-                We sent a 6-digit code to <span className="text-text-light font-medium">{email}</span>
+              <p className="text-sm text-text-card-muted mb-2">
+                We sent a sign-in link + a 6-digit code to <span className="text-text-light font-medium">{email}</span>
+              </p>
+              <p className="text-xs text-text-card-muted mb-6">
+                Click the link in your email, or enter the code below.
               </p>
 
               <label className="block">
