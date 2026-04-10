@@ -19,26 +19,28 @@ function relativeTime(iso) {
 }
 
 function StatusBadge({ status, lastError }) {
+  // Uppercase tracking labels — [11px] is the minimum safe size.
+  const base = 'inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide rounded-md px-2 py-0.5';
   if (status === 'active') {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-profit bg-profit/10 rounded-md px-2 py-0.5">
-        <CheckCircle className="w-3 h-3" />
+      <span className={`${base} text-profit bg-profit/10`} role="status">
+        <CheckCircle className="w-3 h-3" aria-hidden="true" />
         Active
       </span>
     );
   }
   if (status === 'provisioning') {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-text-card-muted bg-card-lighter rounded-md px-2 py-0.5">
-        <Clock className="w-3 h-3" />
+      <span className={`${base} text-text-card-muted bg-card-lighter`} role="status">
+        <Clock className="w-3 h-3" aria-hidden="true" />
         Provisioning
       </span>
     );
   }
   if (status === 'syncing') {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-accent-blue bg-accent-blue/10 rounded-md px-2 py-0.5">
-        <Loader2 className="w-3 h-3 animate-spin" />
+      <span className={`${base} text-accent-blue bg-accent-blue/10`} role="status">
+        <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
         Syncing
       </span>
     );
@@ -46,16 +48,17 @@ function StatusBadge({ status, lastError }) {
   if (status === 'error') {
     return (
       <span
-        className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-loss bg-loss/10 rounded-md px-2 py-0.5"
+        className={`${base} text-loss bg-loss/10`}
         title={lastError || 'Sync failed'}
+        role="status"
       >
-        <AlertCircle className="w-3 h-3" />
+        <AlertCircle className="w-3 h-3" aria-hidden="true" />
         Error
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-text-card-muted bg-card-lighter rounded-md px-2 py-0.5">
+    <span className={`${base} text-text-card-muted bg-card-lighter`} role="status">
       Disabled
     </span>
   );
@@ -125,31 +128,38 @@ export default function BrokerStatus({ onDataChange }) {
 
   return (
     <div className="max-w-2xl mx-auto mt-6">
-      <div className="bg-card rounded-3xl p-5 lg:p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-card-lighter flex items-center justify-center">
-              <Link2 className="w-4 h-4 text-text-card-muted" />
+      <div className="bg-card rounded-3xl p-5 lg:p-6 shadow-lg shadow-black/5">
+        <div className="flex items-center justify-between mb-4 gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-card-lighter flex items-center justify-center shrink-0">
+              <Link2 className="w-4 h-4 text-text-card-muted" aria-hidden="true" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h3 className="text-sm font-semibold text-text-light">Connected brokers</h3>
-              <p className="text-[11px] text-text-card-muted mt-0.5">
+              <p className="text-xs text-text-card-muted mt-0.5 truncate">
                 Auto-syncs every 10 minutes &middot; MT4 &amp; MT5
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={() => setDialogOpen(true)}
-            className="flex items-center gap-1.5 text-xs font-medium text-profit bg-profit/10 hover:bg-profit/15 rounded-xl px-3.5 py-2 transition-colors"
+            aria-label="Connect a new broker"
+            className="min-h-[44px] flex items-center gap-1.5 text-xs font-medium text-profit bg-profit/10 hover:bg-profit/15 rounded-xl px-4 py-3 transition-colors shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 focus-visible:ring-offset-2 focus-visible:ring-offset-card"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-4 h-4" aria-hidden="true" />
             Connect
           </button>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-text-card-muted">
-            <Loader2 className="w-4 h-4 animate-spin" />
+          <div className="space-y-2" aria-busy="true" aria-label="Loading broker connections">
+            {[0, 1].map((i) => (
+              <div key={i} className="bg-card-lighter/60 rounded-xl px-4 py-3 animate-skeleton">
+                <div className="h-3 w-32 bg-card-light rounded mb-2" />
+                <div className="h-2.5 w-48 bg-card-light rounded" />
+              </div>
+            ))}
           </div>
         ) : connections.length === 0 ? (
           <p className="text-xs text-text-card-muted py-2">
@@ -160,43 +170,47 @@ export default function BrokerStatus({ onDataChange }) {
             {connections.map((c) => (
               <div
                 key={c.id}
-                className="flex items-center justify-between bg-card-lighter rounded-xl px-4 py-3"
+                className="flex items-center justify-between bg-card-lighter rounded-xl px-4 py-3 gap-3"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-medium text-text-light truncate">{c.accountName}</p>
                     <StatusBadge status={c.status} lastError={c.lastError} />
                   </div>
-                  <p className="text-[11px] text-text-card-muted mt-0.5 truncate">
+                  <p className="text-xs text-text-card-muted mt-0.5 truncate tabular-nums">
                     {c.platform.toUpperCase()} &middot; {c.server} &middot; #{c.login} &middot; synced {relativeTime(c.lastSyncAt)}
                   </p>
                   {c.status === 'error' && c.lastError && (
-                    <p className="text-[11px] text-loss mt-1 truncate">{c.lastError}</p>
+                    <p className="text-xs text-loss mt-1 truncate">{c.lastError}</p>
                   )}
                 </div>
-                <div className="flex items-center gap-1 ml-3 shrink-0">
+                <div className="flex items-center gap-1 ml-1 shrink-0">
                   <button
+                    type="button"
                     onClick={() => handleSync(c)}
                     disabled={syncingId === c.id || c.status === 'provisioning' || c.status === 'syncing'}
-                    className="p-2 rounded-lg text-text-card-muted hover:text-text-light hover:bg-card disabled:opacity-40"
+                    className="w-10 h-10 flex items-center justify-center rounded-xl text-text-card-muted hover:text-text-light hover:bg-card disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 focus-visible:ring-offset-2 focus-visible:ring-offset-card transition-colors"
+                    aria-label={`Sync ${c.accountName} now`}
                     title="Sync now"
                   >
                     {syncingId === c.id ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                     ) : (
-                      <RefreshCw className="w-3.5 h-3.5" />
+                      <RefreshCw className="w-4 h-4" aria-hidden="true" />
                     )}
                   </button>
                   <button
+                    type="button"
                     onClick={() => handleDisconnect(c)}
                     disabled={disconnectingId === c.id}
-                    className="p-2 rounded-lg text-text-card-muted hover:text-loss hover:bg-loss/5 disabled:opacity-40"
+                    className="w-10 h-10 flex items-center justify-center rounded-xl text-text-card-muted hover:text-loss hover:bg-loss/5 disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-loss/40 focus-visible:ring-offset-2 focus-visible:ring-offset-card transition-colors"
+                    aria-label={`Disconnect ${c.accountName}`}
                     title="Disconnect"
                   >
                     {disconnectingId === c.id ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                     ) : (
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-4 h-4" aria-hidden="true" />
                     )}
                   </button>
                 </div>

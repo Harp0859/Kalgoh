@@ -50,6 +50,16 @@ async function unwrapEdgeError(error) {
   return message;
 }
 
+export async function fetchBrokers(query) {
+  const body = {};
+  if (typeof query === 'string' && query.length > 0) body.query = query;
+  const { data, error } = await supabase.functions.invoke('metaapi-brokers', {
+    body,
+  });
+  if (error) throw new Error(await unwrapEdgeError(error));
+  return data?.brokers || {};
+}
+
 export async function connectBroker({ platform, login, investorPassword, server, nickname }) {
   const { data, error } = await supabase.functions.invoke('metaapi-provision', {
     body: { platform, login, investorPassword, server, nickname },

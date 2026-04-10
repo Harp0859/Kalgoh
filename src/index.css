@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+/* ----------------------------------------------------------------
+ * Z-index scale (use via Tailwind arbitrary values or the utility
+ * classes defined below). Keep in sync with layout components.
+ *   0    base content
+ *   20   sticky headers
+ *   30   fixed sidebar / topbar
+ *   40   modal backdrops
+ *   50   modals / drawers
+ *   60   popovers / tooltips
+ * ---------------------------------------------------------------- */
+:root {
+  --z-sticky: 20;
+  --z-fixed: 30;
+  --z-backdrop: 40;
+  --z-modal: 50;
+  --z-popover: 60;
+}
+
 @theme {
   --color-bg: #e8e5df;
   --color-bg-alt: #dddad4;
@@ -24,6 +42,30 @@
   --color-border-subtle: rgba(0, 0, 0, 0.06);
 }
 
+/* ----------------------------------------------------------------
+ * Dark theme overrides.
+ *
+ * The default palette pairs a warm cream body with dark cards.
+ * In dark mode the body becomes near-black and cards sit slightly
+ * elevated above it. Card-interior text tokens (text-light /
+ * text-card / text-card-muted) stay the same because cards remain
+ * dark — only body-level tokens flip.
+ * ---------------------------------------------------------------- */
+[data-theme="dark"] {
+  --color-bg: #0a0a0a;
+  --color-bg-alt: #141414;
+  --color-bg-elevated: #1a1a1a;
+  --color-card: #161616;
+  --color-card-light: #1e1e1e;
+  --color-card-lighter: #242424;
+  --color-card-surface: #101010;
+  --color-text-primary: #f0f0ec;
+  --color-text-secondary: #a0a099;
+  --color-text-muted: #6a6a64;
+  --color-border: #2a2a2a;
+  --color-border-subtle: rgba(255, 255, 255, 0.06);
+}
+
 body {
   margin: 0;
   background: var(--color-bg);
@@ -31,6 +73,72 @@ body {
   font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Skip-to-content link — visually hidden until focused */
+.skip-to-content {
+  position: fixed;
+  top: 0;
+  left: 0;
+  padding: 0.75rem 1rem;
+  margin: 0.5rem;
+  background: var(--color-card);
+  color: var(--color-text-light);
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-150%);
+  transition: transform 150ms ease-out;
+  z-index: 100;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+.skip-to-content:focus,
+.skip-to-content:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid rgba(255, 255, 255, 0.4);
+  outline-offset: 2px;
+}
+
+/* Safe-area helpers (iOS home indicator etc.) */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+.pl-safe {
+  padding-left: env(safe-area-inset-left);
+}
+.pr-safe {
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Typography utilities */
+.text-page-title {
+  font-size: clamp(1.875rem, 4vw, 3rem);
+  line-height: 1.05;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+.text-section-title {
+  font-size: 1rem;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+@media (min-width: 1024px) {
+  .text-section-title {
+    font-size: 1.125rem;
+  }
+}
+
+/* Tabular numbers utility — Tailwind's `tabular-nums` class also works,
+ * this mirrors it so bare CSS consumers get the same behavior. */
+.tabular-nums {
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
 }
 
 /* Subtle noise texture */
@@ -59,6 +167,18 @@ body::after {
 ::-webkit-scrollbar-thumb:hover {
   background: #9a9a90;
 }
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: #3a3a3a;
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: #4a4a4a;
+}
+
+/* Noise texture is tuned for the cream body — dial it down in dark mode
+ * so we don't get a gritty overlay over near-black. */
+[data-theme="dark"] body::after {
+  opacity: 0.015;
+}
 
 /* Animations */
 @keyframes fadeIn {
@@ -86,4 +206,84 @@ body::after {
 
 .animate-slideIn {
   animation: slideIn 0.2s ease-out;
+}
+
+/* Modal / dialog motion */
+@keyframes backdropFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dialogScaleIn {
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.animate-backdropFadeIn {
+  animation: backdropFadeIn 180ms ease-out;
+}
+
+.animate-dialogScaleIn {
+  animation: dialogScaleIn 180ms ease-out;
+}
+
+/* Shorter aliases used by other feature modals. Keep both so existing
+ * usages and newer ones can share the same keyframes. */
+@keyframes dialogEnter {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes backdropEnter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.dialog-enter {
+  animation: dialogEnter 180ms ease-out;
+}
+.backdrop-enter {
+  animation: backdropEnter 150ms ease-out;
+}
+
+@keyframes popoverScaleIn {
+  from { opacity: 0; transform: scale(0.98) translateY(-2px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.animate-popoverScaleIn {
+  animation: popoverScaleIn 150ms ease-out;
+}
+
+/* Loading skeleton shimmer */
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.8; }
+}
+
+.animate-skeleton {
+  animation: skeletonPulse 1.4s ease-in-out infinite;
+}
+
+/* Respect reduced motion — users who ask for less movement get near-instant
+ * transitions and any continuously-running animations are disabled. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .tab-enter,
+  .animate-float,
+  .animate-slideIn,
+  .animate-backdropFadeIn,
+  .animate-dialogScaleIn,
+  .animate-popoverScaleIn,
+  .animate-skeleton,
+  .dialog-enter,
+  .backdrop-enter {
+    animation: none !important;
+  }
 }

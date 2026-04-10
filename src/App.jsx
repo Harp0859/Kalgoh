@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+
 import { LayoutDashboard, Loader2 } from 'lucide-react';
 
 import Sidebar from './layout/Sidebar';
@@ -35,8 +36,16 @@ export default function App() {
   // Show loading or login screen before anything else
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center">
-        <Loader2 className="w-6 h-6 text-text-muted animate-spin" />
+      <div
+        className="min-h-screen bg-bg flex items-center justify-center"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-6 h-6 text-text-muted animate-spin" aria-hidden="true" />
+          <span className="text-xs text-text-muted">Loading…</span>
+        </div>
       </div>
     );
   }
@@ -165,10 +174,16 @@ function AuthenticatedApp({ user, signOut, changeEmail }) {
 
   return (
     <div className="min-h-screen bg-bg">
+      <a href="#main-content" className="skip-to-content">Skip to main content</a>
+
       <Sidebar tab={tab} setTab={setTab} hasTrades={hasTrades} mobileOpen={mobileMenuOpen} setMobileOpen={setMobileMenuOpen} />
 
       {/* Content area */}
-      <div className="lg:ml-[200px] px-4 lg:px-8 pt-5 lg:pt-6 pb-8 lg:pb-16">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="lg:ml-[200px] px-4 lg:px-8 pt-5 lg:pt-6 pb-8 lg:pb-16 pb-safe focus:outline-none"
+      >
         <TopBar
           title={meta.title}
           subtitle={meta.subtitle}
@@ -184,6 +199,7 @@ function AuthenticatedApp({ user, signOut, changeEmail }) {
           hasDateFilter={hasDateFilter}
           filteredCount={filteredTrades.length}
           onMenuOpen={() => setMobileMenuOpen(true)}
+          mobileMenuOpen={mobileMenuOpen}
           autoSyncing={autoSyncing}
         />
 
@@ -257,7 +273,7 @@ function AuthenticatedApp({ user, signOut, changeEmail }) {
             <NoDataState onGoToUpload={() => setTab('upload')} />
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

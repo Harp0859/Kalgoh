@@ -18,6 +18,19 @@ export default function DatePicker({ dateFrom, dateTo, onChangeFrom, onChangeTo,
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  // Escape key closes the picker.
+  useEffect(() => {
+    if (!open) return;
+    function handleKey(e) {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        setOpen(false);
+      }
+    }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [open]);
+
   const hasFilter = dateFrom || dateTo;
 
   const fromDate = dateFrom ? new Date(dateFrom + 'T00:00:00') : null;
@@ -77,42 +90,62 @@ export default function DatePicker({ dateFrom, dateTo, onChangeFrom, onChangeTo,
     <div ref={ref} className="relative">
       {/* Trigger */}
       <button
+        type="button"
         onClick={() => setOpen(!open)}
-        className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-colors duration-150 cursor-pointer
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={hasFilter ? `Date range: ${displayLabel}` : 'Filter by date range'}
+        className={`min-h-[44px] min-w-[44px] flex items-center justify-center gap-0 lg:gap-2 px-0 lg:px-3.5 py-3 rounded-xl border transition-colors duration-150 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg
           ${hasFilter
             ? 'bg-card text-text-light border-border-card'
             : 'bg-bg-alt text-text-primary border-border-subtle hover:border-border'
           }`}
       >
-        <CalendarRange className={`w-3.5 h-3.5 ${hasFilter ? 'text-text-card-muted' : 'text-text-secondary'}`} />
-        <span className="text-sm font-medium">{displayLabel}</span>
+        <CalendarRange className={`w-4 h-4 ${hasFilter ? 'text-text-card-muted' : 'text-text-secondary'}`} aria-hidden="true" />
+        <span className="hidden lg:inline text-sm font-medium tabular-nums">{displayLabel}</span>
         {hasFilter && (
-          <button
+          <span
+            role="button"
+            tabIndex={0}
             onClick={(e) => { e.stopPropagation(); onClear(); }}
-            className="p-0.5 rounded hover:bg-card-lighter text-text-card-muted hover:text-text-light ml-0.5"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                onClear();
+              }
+            }}
+            aria-label="Clear date range"
+            className="hidden lg:flex w-6 h-6 items-center justify-center rounded-md hover:bg-card-lighter text-text-card-muted hover:text-text-light ml-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/40"
           >
-            <X className="w-3 h-3" />
-          </button>
+            <X className="w-3.5 h-3.5" aria-hidden="true" />
+          </span>
         )}
       </button>
 
       {/* Calendar popup — fixed overlay on mobile, absolute on desktop */}
       {open && (
         <>
-          <div className="lg:hidden fixed inset-0 z-[55] bg-black/30" onClick={() => setOpen(false)} />
-          <div className="fixed left-4 right-4 top-1/2 -translate-y-1/2 lg:translate-y-0 lg:absolute lg:left-auto lg:right-0 lg:top-full lg:mt-2 bg-card rounded-2xl border border-border-card shadow-2xl shadow-black/30 p-5 z-[60] lg:w-[320px]">
+          <div className="lg:hidden fixed inset-0 z-[55] bg-black/30 animate-backdropFadeIn" onClick={() => setOpen(false)} />
+          <div
+            role="dialog"
+            aria-label="Select date range"
+            className="fixed left-4 right-4 top-1/2 -translate-y-1/2 lg:translate-y-0 lg:absolute lg:left-auto lg:right-0 lg:top-full lg:mt-2 bg-card rounded-2xl border border-border-card shadow-xl shadow-black/30 p-5 z-[60] lg:w-[320px] animate-popoverScaleIn pb-[calc(1.25rem+env(safe-area-inset-bottom))] lg:pb-5"
+          >
           {/* Selection tabs */}
-          <div className="flex gap-1 mb-4 bg-card-lighter rounded-lg p-0.5">
+          <div className="flex gap-1 mb-4 bg-card-lighter rounded-xl p-1">
             <button
+              type="button"
               onClick={() => setSelecting('from')}
-              className={`flex-1 text-xs font-medium py-1.5 rounded-md transition-colors duration-100
+              className={`flex-1 text-xs font-medium py-2 rounded-lg transition-colors duration-100 tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/40
                 ${selecting === 'from' ? 'bg-card-light text-text-light' : 'text-text-card-muted hover:text-text-light'}`}
             >
               From: {dateFrom ? format(new Date(dateFrom + 'T00:00:00'), 'MMM d, yyyy') : '—'}
             </button>
             <button
+              type="button"
               onClick={() => setSelecting('to')}
-              className={`flex-1 text-xs font-medium py-1.5 rounded-md transition-colors duration-100
+              className={`flex-1 text-xs font-medium py-2 rounded-lg transition-colors duration-100 tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/40
                 ${selecting === 'to' ? 'bg-card-light text-text-light' : 'text-text-card-muted hover:text-text-light'}`}
             >
               To: {dateTo ? format(new Date(dateTo + 'T00:00:00'), 'MMM d, yyyy') : '—'}
@@ -122,31 +155,35 @@ export default function DatePicker({ dateFrom, dateTo, onChangeFrom, onChangeTo,
           {/* Month nav */}
           <div className="flex items-center justify-between mb-3">
             <button
+              type="button"
               onClick={() => setViewMonth((m) => subMonths(m, 1))}
-              className="p-1.5 rounded-lg hover:bg-card-lighter text-text-card-muted hover:text-text-light transition-colors"
+              aria-label="Previous month"
+              className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-card-lighter text-text-card-muted hover:text-text-light transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/40"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-4 h-4" aria-hidden="true" />
             </button>
-            <span className="text-sm font-semibold text-text-light">{currentMonthStr}</span>
+            <span className="text-sm font-semibold text-text-light" aria-live="polite">{currentMonthStr}</span>
             <button
+              type="button"
               onClick={() => setViewMonth((m) => addMonths(m, 1))}
-              className="p-1.5 rounded-lg hover:bg-card-lighter text-text-card-muted hover:text-text-light transition-colors"
+              aria-label="Next month"
+              className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-card-lighter text-text-card-muted hover:text-text-light transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/40"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
 
           {/* Weekday headers */}
           <div className="grid grid-cols-7 gap-0 mb-1">
             {WEEKDAYS.map((d) => (
-              <div key={d} className="text-center text-[10px] font-medium text-text-card-muted py-1">
+              <div key={d} className="text-center text-[11px] font-medium uppercase tracking-wide text-text-card-muted py-1">
                 {d}
               </div>
             ))}
           </div>
 
           {/* Day grid */}
-          <div className="grid grid-cols-7 gap-0">
+          <div className="grid grid-cols-7 gap-0" role="grid">
             {calendarDays.map((day) => {
               const inMonth = day.getMonth() === viewMonth.getMonth();
               const isStart = isRangeStart(day);
@@ -157,9 +194,12 @@ export default function DatePicker({ dateFrom, dateTo, onChangeFrom, onChangeTo,
               return (
                 <button
                   key={day.toISOString()}
+                  type="button"
                   onClick={() => inMonth && handleDayClick(day)}
                   disabled={!inMonth}
-                  className={`h-9 text-xs font-medium rounded-lg transition-all duration-100 relative
+                  aria-label={format(day, 'MMMM d, yyyy')}
+                  aria-pressed={isStart || isEnd || inRange}
+                  className={`h-10 text-xs font-medium rounded-lg transition-all duration-100 relative tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/40
                     ${!inMonth ? 'text-text-card-muted/20 cursor-default' : 'cursor-pointer'}
                     ${isStart || isEnd
                       ? 'bg-text-light text-card font-bold'
@@ -184,13 +224,14 @@ export default function DatePicker({ dateFrom, dateTo, onChangeFrom, onChangeTo,
               { label: 'Today', fn: () => { const t = format(new Date(), 'yyyy-MM-dd'); onChangeFrom(t); onChangeTo(t); } },
               { label: '7d', fn: () => { const t = new Date(); onChangeTo(format(t, 'yyyy-MM-dd')); t.setDate(t.getDate() - 6); onChangeFrom(format(t, 'yyyy-MM-dd')); } },
               { label: '30d', fn: () => { const t = new Date(); onChangeTo(format(t, 'yyyy-MM-dd')); t.setDate(t.getDate() - 29); onChangeFrom(format(t, 'yyyy-MM-dd')); } },
-              { label: 'This month', fn: () => { const t = new Date(); onChangeFrom(format(startOfMonth(t), 'yyyy-MM-dd')); onChangeTo(format(t, 'yyyy-MM-dd')); } },
+              { label: 'Month', fn: () => { const t = new Date(); onChangeFrom(format(startOfMonth(t), 'yyyy-MM-dd')); onChangeTo(format(t, 'yyyy-MM-dd')); } },
               { label: 'All', fn: () => { onClear(); } },
             ].map((preset) => (
               <button
                 key={preset.label}
+                type="button"
                 onClick={() => { preset.fn(); setSelecting('from'); }}
-                className="flex-1 text-[10px] font-medium text-text-card-muted hover:text-text-light py-1.5 rounded-lg hover:bg-card-lighter transition-colors"
+                className="flex-1 text-[11px] font-medium text-text-card-muted hover:text-text-light py-2 rounded-lg hover:bg-card-lighter transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/40"
               >
                 {preset.label}
               </button>

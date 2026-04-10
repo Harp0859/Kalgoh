@@ -62,7 +62,11 @@ export default function FileUpload({ onUploadComplete }) {
     <div className="max-w-2xl mx-auto">
       {/* Drop zone */}
       <div
-        className={`rounded-3xl p-16 text-center cursor-pointer transition-all duration-200
+        role="button"
+        tabIndex={0}
+        aria-label="Upload MT5 trade reports (.xlsx, .xls, .csv)"
+        aria-busy={uploading}
+        className={`rounded-3xl p-12 lg:p-16 text-center cursor-pointer transition-all duration-200 shadow-lg shadow-black/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg
           ${dragOver
             ? 'bg-card scale-[1.02] border-2 border-solid border-profit'
             : 'bg-card border-2 border-dashed border-border-card hover:bg-card-light hover:border-text-card-muted/30'
@@ -71,6 +75,12 @@ export default function FileUpload({ onUploadComplete }) {
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
         onClick={() => fileRef.current?.click()}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            fileRef.current?.click();
+          }
+        }}
       >
         <input
           ref={fileRef}
@@ -79,19 +89,26 @@ export default function FileUpload({ onUploadComplete }) {
           multiple
           className="hidden"
           onChange={onFileSelect}
+          aria-hidden="true"
         />
 
         {uploading ? (
-          <div className="flex flex-col items-center gap-4">
-            <Loader2 className="w-10 h-10 text-text-card-muted animate-spin" />
+          <div className="flex flex-col items-center gap-4" role="status" aria-live="polite">
+            <Loader2 className="w-10 h-10 text-text-card-muted animate-spin" aria-hidden="true" />
             <div>
-              <p className="text-base text-text-card-muted">
+              <p className="text-base text-text-card-muted tabular-nums">
                 Processing file {progress.current} of {progress.total}
               </p>
               <p className="text-xs text-text-card-muted/60 mt-1">{progress.fileName}</p>
             </div>
             {/* Progress bar */}
-            <div className="w-48 h-1.5 bg-card-lighter rounded-full overflow-hidden">
+            <div
+              className="w-48 h-1.5 bg-card-lighter rounded-full overflow-hidden"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={progress.total}
+              aria-valuenow={progress.current}
+            >
               <div
                 className="h-full bg-profit rounded-full transition-all duration-300"
                 style={{ width: `${(progress.current / progress.total) * 100}%` }}
@@ -101,45 +118,50 @@ export default function FileUpload({ onUploadComplete }) {
         ) : (
           <div className="flex flex-col items-center gap-5">
             <div className="w-14 h-14 rounded-2xl bg-card-lighter flex items-center justify-center animate-float">
-              <Upload className="w-6 h-6 text-text-card-muted" />
+              <Upload className="w-6 h-6 text-text-card-muted" aria-hidden="true" />
             </div>
             <div>
               <p className="text-lg font-semibold text-text-light">Drop your MT5 reports here</p>
               <p className="text-sm text-text-card-muted mt-1.5">Select multiple files at once &middot; .xlsx, .xls, .csv</p>
             </div>
-            <button className="px-6 py-2.5 bg-card-lighter hover:bg-card-light text-text-light rounded-xl text-sm font-medium flex items-center gap-2 transition-colors duration-200">
+            <span className="min-h-[44px] px-6 py-3 bg-card-lighter hover:bg-card-light text-text-light rounded-xl text-sm font-medium flex items-center gap-2 transition-colors duration-200">
               Browse Files
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </button>
+              <ArrowUpRight className="w-4 h-4" aria-hidden="true" />
+            </span>
           </div>
         )}
       </div>
 
       {/* Results */}
       {results.length > 0 && (
-        <div className="mt-5 p-4 bg-profit-bg rounded-2xl">
+        <div className="mt-5 p-4 bg-profit-bg rounded-2xl" role="status">
           <div className="flex items-center gap-3 mb-2">
-            <CheckCircle className="w-5 h-5 text-profit shrink-0" />
+            <CheckCircle className="w-5 h-5 text-profit shrink-0" aria-hidden="true" />
             <div className="flex-1">
               <p className="text-sm font-medium text-profit">
                 {results.length} file{results.length !== 1 ? 's' : ''} uploaded
               </p>
-              <p className="text-xs text-text-secondary mt-0.5">
+              <p className="text-xs text-text-secondary mt-0.5 tabular-nums">
                 {totalNew} new trade{totalNew !== 1 ? 's' : ''} imported
                 {totalSkipped > 0 && <span className="text-text-muted"> &middot; {totalSkipped} duplicate{totalSkipped !== 1 ? 's' : ''} skipped</span>}
               </p>
             </div>
-            <button onClick={() => setResults([])} className="text-text-muted hover:text-text-primary p-1">
-              <X className="w-4 h-4" />
+            <button
+              type="button"
+              onClick={() => setResults([])}
+              aria-label="Dismiss upload results"
+              className="w-10 h-10 flex items-center justify-center rounded-xl text-text-muted hover:text-text-primary hover:bg-profit/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50"
+            >
+              <X className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
           {/* Per-file breakdown */}
           {results.length > 1 && (
             <div className="mt-2 pt-2 border-t border-profit/20 space-y-1">
               {results.map((r, i) => (
-                <div key={i} className="flex items-center justify-between text-xs">
-                  <span className="text-text-secondary">{r.fileName}</span>
-                  <span className="text-text-muted">
+                <div key={i} className="flex items-center justify-between text-xs gap-2">
+                  <span className="text-text-secondary truncate">{r.fileName}</span>
+                  <span className="text-text-muted tabular-nums shrink-0">
                     {r.newCount} new{r.skippedCount > 0 ? `, ${r.skippedCount} skipped` : ''}
                   </span>
                 </div>
@@ -151,16 +173,21 @@ export default function FileUpload({ onUploadComplete }) {
 
       {/* Errors */}
       {errors.length > 0 && (
-        <div className="mt-5 p-4 bg-loss-bg rounded-2xl">
+        <div className="mt-5 p-4 bg-loss-bg rounded-2xl" role="alert">
           <div className="flex items-center gap-3 mb-2">
-            <X className="w-5 h-5 text-loss shrink-0" />
+            <X className="w-5 h-5 text-loss shrink-0" aria-hidden="true" />
             <div className="flex-1">
               <p className="text-sm font-medium text-loss">
                 {errors.length} file{errors.length !== 1 ? 's' : ''} failed
               </p>
             </div>
-            <button onClick={() => setErrors([])} className="text-text-muted hover:text-text-primary p-1">
-              <X className="w-4 h-4" />
+            <button
+              type="button"
+              onClick={() => setErrors([])}
+              aria-label="Dismiss upload errors"
+              className="w-10 h-10 flex items-center justify-center rounded-xl text-text-muted hover:text-text-primary hover:bg-loss/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-loss/50"
+            >
+              <X className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
           <div className="space-y-1">

@@ -332,10 +332,16 @@ export function getSummaryStats(trades, startingBalance = 0, balanceOps = [], al
     if (dd > maxDrawdown) maxDrawdown = dd;
   }
 
-  // Growth % based on trading P/L only, relative to the window start
+  // Growth % based on trading P/L only, relative to the window start.
+  //
+  // Guard against floating-point residuals: when pre-window trades+ops are
+  // replayed to compute windowStart, the remainder can be something like
+  // 1e-13 (mathematically zero, not a real baseline). Dividing by that
+  // produces absurd percentages. Require at least one cent of real capital
+  // before computing a ratio.
   const currentBalance = equityCurve.length > 0 ? equityCurve[equityCurve.length - 1].balance : windowStart;
   const tradingPnLOnly = equityCurve.length > 0 ? equityCurve[equityCurve.length - 1].tradingEquity - windowStart : 0;
-  const growthPct = windowStart > 0 ? (tradingPnLOnly / windowStart) * 100 : 0;
+  const growthPct = windowStart >= 0.01 ? (tradingPnLOnly / windowStart) * 100 : 0;
 
   // Symbol breakdown
   const symbolStats = {};
