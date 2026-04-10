@@ -22,17 +22,16 @@ import {
   getAccountState,
 } from '../_shared/metaapi.ts';
 
-// Sync looks back this many hours beyond last_sync_at to catch any trades
-// whose close_time was updated after the initial sync (e.g. late settlement).
-const OVERLAP_HOURS = 24;
+// Sync overlap on the START side: look back far enough to catch broker-time
+// offsets (up to ~14h ahead of UTC) plus buffer for late-settlement trades.
+const OVERLAP_HOURS = 48;
 
-// MetaStats interprets the historical-trades date window in BROKER SERVER
-// TIME, not UTC. Brokers run in various offsets (e.g. Vantage Live 15 is
-// UTC+3 during DST). We don't know the offset for each broker up front, so
-// we widen the end of the window by this many hours to guarantee coverage
-// regardless of timezone. Dedup on (user_id, account, ticket, close_time)
-// handles any duplicates.
-const END_BUFFER_HOURS = 24;
+// END buffer: MetaStats interprets the date window in BROKER SERVER TIME,
+// not UTC. Brokers run in any offset (-12 to +14). We don't know each
+// broker's offset up front, so we widen the end of the window by enough
+// to guarantee coverage in every timezone. Dedup on
+// (user_id, account, ticket, close_time) handles any duplicates.
+const END_BUFFER_HOURS = 48;
 
 // First-time sync pulls this many years of history. MetaStats caps at
 // whatever the broker kept; we just ask for a lot.

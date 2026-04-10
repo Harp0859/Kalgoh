@@ -7,6 +7,14 @@ function parseNumber(val) {
   return isNaN(num) ? 0 : num;
 }
 
+// Build an ISO string that preserves the wall-clock value exactly as it
+// appears in the MT5 report, regardless of the user's browser timezone.
+// MT5 shows broker server time; we treat that string as the canonical
+// timestamp and store it verbatim (no timezone conversion).
+function wallClockIso(y, m, d, h, min, sec) {
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}.000Z`;
+}
+
 function parseMT5Date(val) {
   if (!val) return null;
   const str = String(val).trim();
@@ -16,19 +24,29 @@ function parseMT5Date(val) {
   const match = str.match(/(\d{4})[.\-/](\d{2})[.\-/](\d{2})\s+(\d{2}):(\d{2}):?(\d{2})?/);
   if (match) {
     const [, y, m, day, h, min, sec] = match;
-    return new Date(+y, +m - 1, +day, +h, +min, +(sec || 0)).toISOString();
+    return wallClockIso(+y, +m, +day, +h, +min, +(sec || 0));
   }
 
   // DD.MM.YYYY format
   const match2 = str.match(/(\d{2})[.\-/](\d{2})[.\-/](\d{4})\s+(\d{2}):(\d{2}):?(\d{2})?/);
   if (match2) {
     const [, day, m, y, h, min, sec] = match2;
-    return new Date(+y, +m - 1, +day, +h, +min, +(sec || 0)).toISOString();
+    return wallClockIso(+y, +m, +day, +h, +min, +(sec || 0));
   }
 
-  // Try native parse
+  // Fallback: try native parse then strip timezone by reading UTC fields.
+  // This keeps the wall-clock semantics consistent even for edge formats.
   const d = new Date(str);
-  if (!isNaN(d.getTime())) return d.toISOString();
+  if (!isNaN(d.getTime())) {
+    return wallClockIso(
+      d.getUTCFullYear(),
+      d.getUTCMonth() + 1,
+      d.getUTCDate(),
+      d.getUTCHours(),
+      d.getUTCMinutes(),
+      d.getUTCSeconds(),
+    );
+  }
 
   return null;
 }

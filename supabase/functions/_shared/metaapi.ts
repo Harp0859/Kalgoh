@@ -277,6 +277,22 @@ function normalizeType(t?: string): string {
   return s.replace(/^deal_type_/, '');
 }
 
+// MetaStats returns timestamps in broker server time, formatted like
+// "2026-04-10 14:24:11.979" with no timezone indicator. We treat this
+// as the canonical wall-clock time and store it verbatim (by tagging
+// it as UTC) so Postgres doesn't try to convert it. This matches how
+// MT5 displays the same trade and keeps the whole stack timezone-free.
+function wallClockIso(raw?: string | null): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  // Already has a timezone? Keep as-is (shouldn't happen for MetaStats,
+  // but safe for forward compat).
+  if (/[Zz]$/.test(trimmed) || /[+-]\d{2}:?\d{2}$/.test(trimmed)) return trimmed;
+  // "2026-04-10 14:24:11.979" -> "2026-04-10T14:24:11.979Z"
+  return trimmed.replace(' ', 'T') + 'Z';
+}
+
 export function mapTradeToRow(
   trade: MetaStatsTrade,
   userId: string,
@@ -294,8 +310,8 @@ export function mapTradeToRow(
     upload_id: null,
     account: accountName,
     ticket: trade._id ?? '',
-    open_time: trade.openTime ?? null,
-    close_time: trade.closeTime,
+    open_time: wallClockIso(trade.openTime),
+    close_time: wallClockIso(trade.closeTime),
     type,
     symbol: trade.symbol ?? '',
     volume: trade.volume ?? 0,
@@ -326,7 +342,7 @@ export function mapBalanceOp(
 ): BalanceOpRow | null {
   const type = normalizeType(trade.type);
   if (type !== 'balance' && type !== 'credit') return null;
-  const time = trade.closeTime || trade.openTime;
+  const time = wallClockIso(trade.closeTime || trade.openTime);
   if (!time) return null;
 
   return {
