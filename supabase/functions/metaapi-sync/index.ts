@@ -24,7 +24,15 @@ import {
 
 // Sync looks back this many hours beyond last_sync_at to catch any trades
 // whose close_time was updated after the initial sync (e.g. late settlement).
-const OVERLAP_HOURS = 6;
+const OVERLAP_HOURS = 24;
+
+// MetaStats interprets the historical-trades date window in BROKER SERVER
+// TIME, not UTC. Brokers run in various offsets (e.g. Vantage Live 15 is
+// UTC+3 during DST). We don't know the offset for each broker up front, so
+// we widen the end of the window by this many hours to guarantee coverage
+// regardless of timezone. Dedup on (user_id, account, ticket, close_time)
+// handles any duplicates.
+const END_BUFFER_HOURS = 24;
 
 // First-time sync pulls this many years of history. MetaStats caps at
 // whatever the broker kept; we just ask for a lot.
@@ -177,7 +185,18 @@ async function syncOne(
     startDate.setFullYear(now.getFullYear() - FIRST_SYNC_YEARS);
   }
 
+  // End window: now + buffer, to handle broker timezones that are ahead of
+  // UTC. Without this, a trade that happened 2h ago in broker time (say,
+  // UTC+3 = "14:24") can appear to be in the future relative to our UTC
+  // "now" (11:47 UTC), and MetaStats won't include it in the response.
+  const endDate = new Date(now);
+  endDate.setHours(endDate.getHours() + END_BUFFER_HOURS);
+
   const startIso = startDate.toISOString();
+  // Query window end (sent to MetaStats) — padded for broker timezone.
+  const queryEndIso = endDate.toISOString();
+  // Bookkeeping time (last_sync_at) — uses real "now" so we don't
+  // persist a future timestamp.
   const endIso = now.toISOString();
 
   // 0. Check current state. If the account is already deployed + connected,
@@ -204,12 +223,13 @@ async function syncOne(
     //    data without needing `updateHistory=true`).
     const metrics = await getMetrics(token, conn.metaapi_account_id);
 
-    // 2. Fetch trades since the window start.
+    // 2. Fetch trades since the window start. Use queryEndIso (padded by
+    //    24h) so broker-time trades ahead of UTC are still included.
     const trades = await getAccountTrades(
       token,
       conn.metaapi_account_id,
       startIso,
-      endIso,
+      queryEndIso,
     );
 
   // 3. Map into our schema.
