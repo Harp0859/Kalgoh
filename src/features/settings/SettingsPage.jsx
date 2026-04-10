@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Wallet, Trash2, AlertTriangle, Database, LogOut } from 'lucide-react';
+import { Wallet, Trash2, AlertTriangle, Database, LogOut, Mail } from 'lucide-react';
 import { clearAllData, getSetting, setSetting } from '../../db/database';
 
-export default function SettingsPage({ accounts, startingBalance, selectedAccount, onStartingBalanceChange, onDataChange, onSignOut }) {
+export default function SettingsPage({ accounts, startingBalance, selectedAccount, onStartingBalanceChange, onDataChange, onSignOut, user, onChangeEmail }) {
   const [confirmClear, setConfirmClear] = useState(false);
   const [accountBalances, setAccountBalances] = useState({});
   const [editingAccount, setEditingAccount] = useState(null);
   const [editValue, setEditValue] = useState('');
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [emailStatus, setEmailStatus] = useState(null);
 
   // Load per-account balances
   useEffect(() => {
@@ -37,6 +40,18 @@ export default function SettingsPage({ accounts, startingBalance, selectedAccoun
     }
   }
 
+  async function handleEmailChange() {
+    if (!newEmail || !newEmail.includes('@')) return;
+    setEmailStatus({ type: 'loading' });
+    try {
+      await onChangeEmail(newEmail);
+      setEmailStatus({ type: 'success', message: `Confirmation sent to ${newEmail}. Click the link in that email to confirm the change.` });
+      setEditingEmail(false);
+    } catch (e) {
+      setEmailStatus({ type: 'error', message: e.message });
+    }
+  }
+
   async function handleClearAll() {
     try {
       await clearAllData();
@@ -51,6 +66,65 @@ export default function SettingsPage({ accounts, startingBalance, selectedAccoun
 
   return (
     <div className="max-w-2xl space-y-4 lg:space-y-6">
+      {/* Email / Account */}
+      {user && (
+        <div className="bg-card rounded-3xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 rounded-xl bg-card-lighter flex items-center justify-center">
+              <Mail className="w-4.5 h-4.5 text-text-card-muted" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-text-light">Email</h3>
+              <p className="text-xs text-text-card-muted mt-0.5">Used for sign-in. Changes require confirmation.</p>
+            </div>
+          </div>
+
+          {editingEmail ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleEmailChange()}
+                placeholder="new@email.com"
+                autoFocus
+                className="flex-1 bg-card-lighter rounded-xl px-4 py-2.5 text-sm text-text-light placeholder-text-card-muted focus:outline-none"
+              />
+              <button
+                onClick={handleEmailChange}
+                disabled={emailStatus?.type === 'loading'}
+                className="text-xs px-4 py-2.5 bg-profit/10 text-profit rounded-xl font-medium hover:bg-profit/15 disabled:opacity-40"
+              >
+                {emailStatus?.type === 'loading' ? 'Sending...' : 'Send confirmation'}
+              </button>
+              <button
+                onClick={() => { setEditingEmail(false); setEmailStatus(null); setNewEmail(''); }}
+                className="text-xs px-3 py-2.5 text-text-card-muted hover:text-text-light"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between bg-card-lighter rounded-xl px-4 py-3">
+              <span className="text-sm font-medium text-text-light">{user.email}</span>
+              <button
+                onClick={() => { setEditingEmail(true); setNewEmail(''); setEmailStatus(null); }}
+                className="text-[11px] text-text-card-muted hover:text-text-light font-medium px-3 py-1.5 rounded-lg hover:bg-card transition-colors"
+              >
+                Change
+              </button>
+            </div>
+          )}
+
+          {emailStatus?.type === 'success' && (
+            <p className="text-[11px] text-profit mt-3">{emailStatus.message}</p>
+          )}
+          {emailStatus?.type === 'error' && (
+            <p className="text-[11px] text-loss mt-3">{emailStatus.message}</p>
+          )}
+        </div>
+      )}
+
       {/* Accounts with individual balances */}
       <div className="bg-card rounded-3xl p-6">
         <div className="flex items-center gap-3 mb-5">

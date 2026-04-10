@@ -161,6 +161,9 @@ async function syncOne(
   //    UNDEPLOYED state at $0.00105/hr instead of $0.0126/hr deployed.
   await deployAccount(token, conn.metaapi_account_id);
   await waitUntilConnected(token, conn.metaapi_account_id);
+  // Even after connectionStatus=CONNECTED, MetaStats needs a few extra
+  // seconds for its data pipeline to catch up. Give it breathing room.
+  await new Promise((r) => setTimeout(r, 8000));
 
   try {
     // 1. Fetch metrics (side effect: triggers MetaStats to refresh its cached

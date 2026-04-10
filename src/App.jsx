@@ -30,7 +30,7 @@ const PAGE_META = {
 };
 
 export default function App() {
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading, signOut, changeEmail } = useAuth();
 
   // Show loading or login screen before anything else
   if (authLoading) {
@@ -45,10 +45,10 @@ export default function App() {
     return <LoginPage />;
   }
 
-  return <AuthenticatedApp signOut={signOut} />;
+  return <AuthenticatedApp user={user} signOut={signOut} changeEmail={changeEmail} />;
 }
 
-function AuthenticatedApp({ signOut }) {
+function AuthenticatedApp({ user, signOut, changeEmail }) {
   const [tab, setTab] = useState('upload');
   const [trades, setTrades] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -247,6 +247,8 @@ function AuthenticatedApp({ signOut }) {
               onStartingBalanceChange={() => onRefresh()}
               onDataChange={onRefresh}
               onSignOut={signOut}
+              user={user}
+              onChangeEmail={changeEmail}
             />
           )}
 

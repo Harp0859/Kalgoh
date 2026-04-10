@@ -39,8 +39,16 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut();
   }
 
+  async function changeEmail(newEmail) {
+    const { error } = await supabase.auth.updateUser(
+      { email: newEmail },
+      { emailRedirectTo: window.location.origin + window.location.pathname },
+    );
+    if (error) throw error;
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithEmail, verifyOtp, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signInWithEmail, verifyOtp, signOut, changeEmail }}>
       {children}
     </AuthContext.Provider>
   );

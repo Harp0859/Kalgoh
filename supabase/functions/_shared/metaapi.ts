@@ -192,21 +192,46 @@ export interface MetaStatsMetrics {
   [k: string]: unknown;
 }
 
+// Retry wrapper for MetaStats calls. MetaStats frequently returns 500/502/504
+// while the terminal is still warming up — even after provisioning reports
+// connectionStatus=CONNECTED, the historical data pipeline takes another
+// 10-30 seconds to populate. Retrying with backoff fixes this transparently.
+async function retry<T>(fn: () => Promise<T>, attempts = 5, baseMs = 5000): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      const msg = (e as Error).message || '';
+      // Only retry on transient server errors from MetaStats.
+      const retryable = /\b(500|502|503|504|408)\b/.test(msg) ||
+                        /not connected to broker/i.test(msg) ||
+                        /TimeoutError/i.test(msg);
+      if (!retryable || i === attempts - 1) throw e;
+      await new Promise((r) => setTimeout(r, baseMs * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 export async function getMetrics(
   token: string,
   accountId: string,
 ): Promise<MetaStatsMetrics> {
-  const res = await metaapiFetch(
-    METASTATS_BASE,
-    `/users/current/accounts/${accountId}/metrics?includeOpenPositions=false`,
-    token,
-  );
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`MetaStats getMetrics failed: ${res.status} ${text}`);
-  }
-  const body = await res.json();
-  return body.metrics || body;
+  return await retry(async () => {
+    const res = await metaapiFetch(
+      METASTATS_BASE,
+      `/users/current/accounts/${accountId}/metrics?includeOpenPositions=false`,
+      token,
+    );
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`MetaStats getMetrics failed: ${res.status} ${text}`);
+    }
+    const body = await res.json();
+    return body.metrics || body;
+  });
 }
 
 export async function getAccountTrades(
@@ -225,13 +250,15 @@ export async function getAccountTrades(
     `/users/current/accounts/${accountId}/historical-trades/` +
     `${encodeURIComponent(fmt(startIso))}/${encodeURIComponent(fmt(endIso))}`;
 
-  const res = await metaapiFetch(METASTATS_BASE, url, token);
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`MetaStats getAccountTrades failed: ${res.status} ${text}`);
-  }
-  const body = await res.json();
-  return body.trades || body || [];
+  return await retry(async () => {
+    const res = await metaapiFetch(METASTATS_BASE, url, token);
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`MetaStats getAccountTrades failed: ${res.status} ${text}`);
+    }
+    const body = await res.json();
+    return body.trades || body || [];
+  });
 }
 
 // ============================================================================
