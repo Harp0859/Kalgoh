@@ -66,10 +66,10 @@ export default function FileUpload({ onUploadComplete }) {
         tabIndex={0}
         aria-label="Upload MT5 trade reports (.xlsx, .xls, .csv)"
         aria-busy={uploading}
-        className={`rounded-3xl p-12 lg:p-16 text-center cursor-pointer transition-all duration-200 shadow-lg shadow-black/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg
+        className={`card-premium rounded-3xl p-12 lg:p-16 text-center cursor-pointer transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg
           ${dragOver
-            ? 'bg-card scale-[1.02] border-2 border-solid border-profit'
-            : 'bg-card border-2 border-dashed border-border-card hover:bg-card-light hover:border-text-card-muted/30'
+            ? 'card-premium-profit bg-card scale-[1.01]'
+            : 'bg-card hover:bg-card-light'
           }`}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}

@@ -8,8 +8,17 @@ export default function TopBar({ title, subtitle, hasTrades, tab, accounts, sele
 
   return (
     <header className="mb-5 lg:mb-8">
-      {/* Mobile: hamburger + brand */}
-      <div className="lg:hidden flex items-center justify-between mb-4">
+      {/* Mobile: fixed hamburger + brand, frosted over scrolled content.
+       *  Uses `fixed` rather than `sticky` because sticky would be
+       *  bounded by the <header> element's height and scroll away once
+       *  the title/filters exit the viewport. Main has a matching top
+       *  padding on mobile so content isn't hidden under this bar. */}
+      <div
+        className="lg:hidden fixed top-0 inset-x-0 z-30 px-4 pt-3 pb-3
+          bg-bg/80 backdrop-blur-xl backdrop-saturate-150
+          border-b border-white/[0.04]
+          flex items-center justify-between"
+      >
         <button
           type="button"
           onClick={onMenuOpen}

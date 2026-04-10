@@ -8,8 +8,52 @@ import { dateKeyUTC, formatDateLongUTC } from '../../utils/dateFormat';
 const fmtMoney = (n) =>
   n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+// Single stat cell used inside the off-screen export surface. Inline styles
+// so html-to-image captures it identically on every browser.
+function StatCell({ label, value, color, withDivider = false }) {
+  return (
+    <div style={{ position: 'relative', paddingLeft: withDivider ? '32px' : 0 }}>
+      {withDivider && (
+        <span
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: '2px',
+            bottom: '2px',
+            width: '1px',
+            background: 'rgba(255,255,255,0.06)',
+          }}
+        />
+      )}
+      <div
+        style={{
+          fontSize: '11px',
+          fontWeight: 500,
+          letterSpacing: '0.14em',
+          textTransform: 'uppercase',
+          color: '#7a7a74',
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          marginTop: '10px',
+          fontSize: '22px',
+          fontWeight: 600,
+          color,
+          fontFeatureSettings: '"tnum"',
+        }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
 export default function TodayCard({ trades }) {
   const cardRef = useRef(null);
+  const exportRef = useRef(null);
 
   // "Today" = latest trading day in UTC (matches server time).
   // If there are no trades today, fall back to the most recent trading day so
@@ -55,9 +99,16 @@ export default function TodayCard({ trades }) {
   const signed = (n) => `${n >= 0 ? '+' : '-'}$${fmtMoney(Math.abs(n))}`;
 
   async function exportImage() {
-    if (!cardRef.current) return;
+    // Always render from the dedicated off-screen export surface so the
+    // image has a fixed width and premium composition regardless of the
+    // viewport the user is currently on.
+    if (!exportRef.current) return;
     try {
-      const dataUrl = await toPng(cardRef.current, { pixelRatio: 2, backgroundColor: '#0f0f0f' });
+      const dataUrl = await toPng(exportRef.current, {
+        pixelRatio: 2,
+        backgroundColor: '#0a0a0a',
+        cacheBust: true,
+      });
       const link = document.createElement('a');
       link.download = `kalgoh-${today}.png`;
       link.href = dataUrl;
@@ -171,14 +222,192 @@ export default function TodayCard({ trades }) {
           </dl>
 
           {avgHold > 0 && (
-            <div className="mt-5 lg:mt-6 flex items-center gap-1.5">
-              <Clock className="w-3 h-3 text-text-card-muted/80" aria-hidden="true" />
+            <div className="mt-5 lg:mt-6 flex items-center gap-1.5 whitespace-nowrap">
+              <Clock className="w-3 h-3 text-text-card-muted/80 shrink-0" aria-hidden="true" />
               <span className="text-[11px] text-text-card-muted">
                 Avg hold
                 <span className="ml-1.5 text-text-card font-medium tabular-nums">{formatDuration(avgHold)}</span>
               </span>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* -------------------------------------------------------------------
+       *  Off-screen export surface
+       *
+       *  Fixed 720px wide surface rendered far off-screen. Uses inline
+       *  pixel values for predictable layout inside html-to-image (which
+       *  snapshots into a canvas and can mis-handle certain Tailwind
+       *  classes on exotic viewports). This is the card the download
+       *  button captures — the visible card above is just for browsing.
+       * ------------------------------------------------------------------- */}
+      <div
+        aria-hidden="true"
+        style={{ position: 'fixed', left: '-10000px', top: 0, pointerEvents: 'none' }}
+      >
+        <div
+          ref={exportRef}
+          style={{
+            width: '720px',
+            boxSizing: 'border-box',
+            padding: '56px',
+            background: '#0a0a0a',
+            borderRadius: '28px',
+            fontFamily: "'Satoshi', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
+            color: '#f0f0ec',
+            fontFeatureSettings: '"tnum"',
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
+          {/* Ambient tint */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: isPositive
+                ? 'radial-gradient(110% 70% at 85% -5%, rgba(74,222,128,0.14) 0%, transparent 55%)'
+                : 'radial-gradient(110% 70% at 85% -5%, rgba(248,113,113,0.14) 0%, transparent 55%)',
+              pointerEvents: 'none',
+            }}
+          />
+          {/* Inner hairline */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: '28px',
+              boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.045)',
+              pointerEvents: 'none',
+            }}
+          />
+
+          <div style={{ position: 'relative' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '9999px',
+                    background: isPositive ? '#4ade80' : '#f87171',
+                    boxShadow: `0 0 16px ${isPositive ? 'rgba(74,222,128,0.6)' : 'rgba(248,113,113,0.6)'}`,
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    letterSpacing: '0.18em',
+                    textTransform: 'uppercase',
+                    color: '#9a9a94',
+                  }}
+                >
+                  Today
+                </span>
+                <span style={{ color: '#5a5a54', fontSize: '12px' }}>·</span>
+                <span style={{ fontSize: '13px', color: '#c0c0b8' }}>{todayLabel}</span>
+              </div>
+            </div>
+
+            {/* Hero P/L */}
+            <div style={{ marginTop: '56px' }}>
+              <div
+                style={{
+                  fontSize: '96px',
+                  lineHeight: 0.95,
+                  fontWeight: 700,
+                  letterSpacing: '-0.04em',
+                  color: isPositive ? '#4ade80' : '#f87171',
+                }}
+              >
+                {isPositive ? '+' : '-'}${fmtMoney(Math.abs(profit))}
+              </div>
+              <div style={{ marginTop: '16px', fontSize: '15px', color: '#9a9a94' }}>
+                <span style={{ color: '#e8e8e4' }}>{todayTrades.length}</span> {tradeWord}
+                <span style={{ margin: '0 10px', color: '#5a5a54' }}>·</span>
+                <span
+                  style={{
+                    fontWeight: 600,
+                    color: winRate >= 50 ? '#4ade80' : '#f87171',
+                  }}
+                >
+                  {winRate.toFixed(0)}%
+                </span>
+                <span style={{ marginLeft: '6px' }}>win rate</span>
+                {commission !== 0 && (
+                  <>
+                    <span style={{ margin: '0 10px', color: '#5a5a54' }}>·</span>
+                    <span>${fmtMoney(Math.abs(commission))} fees</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Separator */}
+            <div
+              style={{
+                marginTop: '56px',
+                height: '1px',
+                background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.09), transparent)',
+              }}
+            />
+
+            {/* Stats row */}
+            <div
+              style={{
+                marginTop: '36px',
+                display: 'grid',
+                gridTemplateColumns: avgHold > 0 ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr',
+                gap: '32px',
+              }}
+            >
+              <StatCell label="W / L" value={`${wins} / ${losses}`} color="#f0f0ec" />
+              <StatCell
+                label="Best"
+                value={signed(bestTrade)}
+                color={bestPositive ? '#4ade80' : '#f87171'}
+                withDivider
+              />
+              <StatCell
+                label="Worst"
+                value={signed(worstTrade)}
+                color={worstPositive ? '#4ade80' : '#f87171'}
+                withDivider
+              />
+              {avgHold > 0 && (
+                <StatCell label="Avg Hold" value={formatDuration(avgHold)} color="#f0f0ec" withDivider />
+              )}
+            </div>
+
+            {/* Footer brand */}
+            <div
+              style={{
+                marginTop: '56px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingTop: '24px',
+                borderTop: '1px solid rgba(255,255,255,0.06)',
+              }}
+            >
+              <span style={{ fontSize: '11px', color: '#6a6a64', letterSpacing: '0.05em' }}>
+                MT5 trading analytics
+              </span>
+              <span
+                style={{
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  letterSpacing: '0.04em',
+                  color: '#f0f0ec',
+                }}
+              >
+                Kalgoh
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -61,7 +61,7 @@ export default function LoginPage() {
         </div>
 
         {/* Auth card */}
-        <div className="bg-card rounded-3xl p-7 lg:p-8 shadow-xl shadow-black/10">
+        <div className="card-premium card-premium-blue bg-card rounded-3xl p-7 lg:p-8">
           <h2 className="text-xl font-semibold text-text-light mb-1">
             {isSignup ? 'Create account' : 'Sign in'}
           </h2>

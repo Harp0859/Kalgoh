@@ -89,7 +89,7 @@ export default function DayModal({ dateKey, trades, account, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="day-modal-title"
-        className="relative bg-card rounded-3xl p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-xl shadow-black/40 animate-dialogScaleIn pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
+        className="card-premium relative bg-card rounded-3xl p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-2xl shadow-black/50 animate-dialogScaleIn pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

@@ -46,30 +46,30 @@ export default function Overview({ stats, startingBalance, hasBalanceOps, trades
       {/* Balance pills */}
       {startingBalance > 0 && (
         <div className="flex flex-wrap gap-2 lg:gap-4">
-          <div className="flex items-center gap-2 bg-card rounded-xl px-3 lg:px-4 py-2">
+          <div className="card-premium flex items-center gap-2 bg-card rounded-xl px-3 lg:px-4 py-2">
             <Wallet className="w-3 h-3 lg:w-3.5 lg:h-3.5 text-text-card-muted" aria-hidden="true" />
             <span className="text-xs text-text-card-muted">Start</span>
             <span className="text-xs lg:text-sm font-bold text-text-light tabular-nums">${fmtMoneyCompact(startingBalance)}</span>
           </div>
-          <div className="flex items-center gap-2 bg-card rounded-xl px-3 lg:px-4 py-2">
+          <div className="card-premium flex items-center gap-2 bg-card rounded-xl px-3 lg:px-4 py-2">
             <Wallet className="w-3 h-3 lg:w-3.5 lg:h-3.5 text-text-card-muted" aria-hidden="true" />
             <span className="text-xs text-text-card-muted">Current</span>
             <span className={`text-xs lg:text-sm font-bold tabular-nums ${lastBalance >= startingBalance ? 'text-profit' : 'text-loss'}`}>${fmtMoney(lastBalance)}</span>
           </div>
-          <div className="flex items-center gap-2 bg-card rounded-xl px-3 lg:px-4 py-2">
+          <div className="card-premium flex items-center gap-2 bg-card rounded-xl px-3 lg:px-4 py-2">
             <Percent className="w-3 h-3 lg:w-3.5 lg:h-3.5 text-text-card-muted" aria-hidden="true" />
             <span className="text-xs text-text-card-muted">Growth</span>
             <span className={`text-xs lg:text-sm font-bold tabular-nums ${stats.growthPct >= 0 ? 'text-profit' : 'text-loss'}`}>{stats.growthPct >= 0 ? '+' : ''}{stats.growthPct.toFixed(1)}%</span>
           </div>
           {stats.totalDeposits > 0 && (
-            <div className="flex items-center gap-2 bg-card rounded-xl px-3 lg:px-4 py-2">
+            <div className="card-premium flex items-center gap-2 bg-card rounded-xl px-3 lg:px-4 py-2">
               <TrendingUp className="w-3 h-3 text-accent-blue" aria-hidden="true" />
               <span className="text-xs text-text-card-muted">In</span>
               <span className="text-xs lg:text-sm font-bold text-accent-blue tabular-nums">+${fmtMoneyCompact(stats.totalDeposits)}</span>
             </div>
           )}
           {stats.totalWithdrawals > 0 && (
-            <div className="flex items-center gap-2 bg-card rounded-xl px-3 lg:px-4 py-2">
+            <div className="card-premium flex items-center gap-2 bg-card rounded-xl px-3 lg:px-4 py-2">
               <TrendingDown className="w-3 h-3 text-yellow-400" aria-hidden="true" />
               <span className="text-xs text-text-card-muted">Out</span>
               <span className="text-xs lg:text-sm font-bold text-yellow-400 tabular-nums">-${fmtMoneyCompact(stats.totalWithdrawals)}</span>

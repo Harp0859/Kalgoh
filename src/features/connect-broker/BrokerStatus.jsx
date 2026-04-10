@@ -128,7 +128,7 @@ export default function BrokerStatus({ onDataChange }) {
 
   return (
     <div className="max-w-2xl mx-auto mt-6">
-      <div className="bg-card rounded-3xl p-5 lg:p-6 shadow-lg shadow-black/5">
+      <div className="card-premium bg-card rounded-3xl p-5 lg:p-6">
         <div className="flex items-center justify-between mb-4 gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-2xl bg-card-lighter flex items-center justify-center shrink-0">

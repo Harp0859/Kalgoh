@@ -209,7 +209,7 @@ export default function ConnectBrokerDialog({ open, onClose, onConnected }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="connect-broker-title"
-        className="w-full max-w-md bg-card rounded-3xl p-6 lg:p-7 shadow-xl shadow-black/40 max-h-[92vh] overflow-y-auto animate-dialogScaleIn pb-[calc(1.5rem+env(safe-area-inset-bottom))] lg:pb-7 relative"
+        className="card-premium card-premium-blue w-full max-w-md bg-card rounded-3xl p-6 lg:p-7 shadow-2xl shadow-black/50 max-h-[92vh] overflow-y-auto animate-dialogScaleIn pb-[calc(1.5rem+env(safe-area-inset-bottom))] lg:pb-7 relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Success overlay */}

@@ -182,7 +182,7 @@ function AuthenticatedApp({ user, signOut, changeEmail }) {
       <main
         id="main-content"
         tabIndex={-1}
-        className="lg:ml-[200px] px-4 lg:px-8 pt-5 lg:pt-6 pb-8 lg:pb-16 pb-safe focus:outline-none"
+        className="lg:ml-[200px] px-4 lg:px-8 pt-[76px] lg:pt-6 pb-8 lg:pb-16 pb-safe focus:outline-none"
       >
         <TopBar
           title={meta.title}
@@ -220,7 +220,7 @@ function AuthenticatedApp({ user, signOut, changeEmail }) {
 
           {/* Calendar */}
           {tab === 'calendar' && hasTrades && (
-            <div className="bg-card rounded-2xl lg:rounded-3xl p-4 lg:p-8">
+            <div className="card-premium bg-card rounded-2xl lg:rounded-3xl p-4 lg:p-8">
               {hasFiltered ? (
                 <CalendarGrid trades={filteredTrades} />
               ) : <EmptyState message="No trades for this filter." dark />}

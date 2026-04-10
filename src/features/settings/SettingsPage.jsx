@@ -75,7 +75,7 @@ export default function SettingsPage({ accounts, startingBalance, selectedAccoun
   return (
     <div className="max-w-2xl space-y-4 lg:space-y-6">
       {/* Appearance */}
-      <div className="bg-card rounded-3xl p-6 shadow-lg shadow-black/5">
+      <div className="card-premium bg-card rounded-3xl p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-2xl bg-card-lighter flex items-center justify-center">
             <Palette className="w-4 h-4 text-text-card-muted" aria-hidden="true" />
@@ -116,7 +116,7 @@ export default function SettingsPage({ accounts, startingBalance, selectedAccoun
 
       {/* Email / Account */}
       {user && (
-        <div className="bg-card rounded-3xl p-6 shadow-lg shadow-black/5">
+        <div className="card-premium bg-card rounded-3xl p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-2xl bg-card-lighter flex items-center justify-center">
               <Mail className="w-4 h-4 text-text-card-muted" aria-hidden="true" />
@@ -178,7 +178,7 @@ export default function SettingsPage({ accounts, startingBalance, selectedAccoun
       )}
 
       {/* Accounts with individual balances */}
-      <div className="bg-card rounded-3xl p-6 shadow-lg shadow-black/5">
+      <div className="card-premium bg-card rounded-3xl p-6">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-10 h-10 rounded-2xl bg-card-lighter flex items-center justify-center">
             <Wallet className="w-4 h-4 text-text-card-muted" aria-hidden="true" />
@@ -265,7 +265,7 @@ export default function SettingsPage({ accounts, startingBalance, selectedAccoun
 
       {/* Sign out */}
       {onSignOut && (
-        <div className="bg-card rounded-3xl p-6 shadow-lg shadow-black/5">
+        <div className="card-premium bg-card rounded-3xl p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-2xl bg-card-lighter flex items-center justify-center shrink-0">
@@ -288,7 +288,7 @@ export default function SettingsPage({ accounts, startingBalance, selectedAccoun
       )}
 
       {/* Danger zone */}
-      <div className="bg-card rounded-3xl p-6 border border-loss/10 shadow-lg shadow-black/5">
+      <div className="card-premium card-premium-loss bg-card rounded-3xl p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-2xl bg-loss/10 flex items-center justify-center">
             <Trash2 className="w-4 h-4 text-loss" aria-hidden="true" />

@@ -35,7 +35,7 @@ export default function UploadHistory({ refreshKey, onDataChange }) {
 
   return (
     <div className="mt-6 max-w-2xl mx-auto">
-      <div className="bg-bg-alt rounded-2xl p-5 border border-border-subtle shadow-lg shadow-black/5">
+      <div className="card-premium bg-card rounded-2xl p-5">
         <div className="flex items-center gap-2.5 mb-4">
           <FileSpreadsheet className="w-4 h-4 text-text-secondary" aria-hidden="true" />
           <h3 className="text-sm font-semibold text-text-primary">Upload History</h3>
