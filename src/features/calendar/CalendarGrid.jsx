@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { format, startOfMonth, endOfMonth, eachWeekOfInterval } from 'date-fns';
 import { toPng } from 'html-to-image';
-import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Calendar, BarChart3, StickyNote, Download, DollarSign, Percent } from 'lucide-react';
+import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Calendar, BarChart3, StickyNote, Download, DollarSign, Percent, Loader2 } from 'lucide-react';
 import { getMonthlyCalendar, getAvailableMonths, getTradesForDate } from '../../utils/tradeStats';
 import { dateKeyUTC } from '../../utils/dateFormat';
 import { getAllNotes } from '../../db/database';
@@ -206,60 +206,80 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
 
   return (
     <div>
-      {/* Toolbar — $/% toggle + Save as image.
+      {/* Toolbar — logo on the left, $/% toggle + Save as image on the right.
        *  Lives outside the capture ref so it doesn't appear in the
        *  downloaded PNG. */}
       <div className="flex items-center justify-between gap-2 mb-4 lg:mb-5">
-        {canShowPercent ? (
-          <div
-            role="radiogroup"
-            aria-label="Value display mode"
-            className="inline-flex items-center gap-1 bg-card-lighter rounded-xl p-1"
+        {/* Brand lockup — logo icon + Kalgoh wordmark. Logo lives at
+         *  public/kalgoh-logo.png; wordmark is a text span alongside
+         *  it so there's always a readable brand even if the PNG
+         *  fails to load. */}
+        <div className="flex items-center gap-2 lg:gap-3 shrink-0 text-text-light">
+          <img
+            src="/kalgoh-logo.png"
+            alt=""
+            className="h-14 lg:h-20 w-auto"
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          />
+          <span className="text-xl lg:text-3xl font-bold tracking-tight text-text-light">
+            Kalgoh
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {canShowPercent && (
+            <div
+              role="radiogroup"
+              aria-label="Value display mode"
+              className="inline-flex items-center gap-1 bg-card-lighter rounded-xl p-1"
+            >
+              <button
+                type="button"
+                role="radio"
+                aria-checked={viewMode === 'amount'}
+                aria-label="Show as amount"
+                title="Amount"
+                onClick={() => setViewMode('amount')}
+                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 ${
+                  viewMode === 'amount'
+                    ? 'bg-card text-text-light shadow-sm shadow-black/20'
+                    : 'text-text-card-muted hover:text-text-light'
+                }`}
+              >
+                <DollarSign className="w-4 h-4" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={viewMode === 'percent'}
+                aria-label="Show as percent"
+                title="Percent"
+                onClick={() => setViewMode('percent')}
+                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 ${
+                  viewMode === 'percent'
+                    ? 'bg-card text-text-light shadow-sm shadow-black/20'
+                    : 'text-text-card-muted hover:text-text-light'
+                }`}
+              >
+                <Percent className="w-4 h-4" aria-hidden="true" />
+              </button>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={downloadImage}
+            disabled={downloading}
+            aria-label="Save calendar as image"
+            title={downloading ? 'Saving…' : 'Save as image'}
+            className="w-11 h-11 flex items-center justify-center rounded-xl text-text-card-muted hover:text-text-light bg-card-lighter hover:bg-card-light transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 disabled:opacity-50"
           >
-            <button
-              type="button"
-              role="radio"
-              aria-checked={viewMode === 'amount'}
-              aria-label="Show as amount"
-              title="Amount"
-              onClick={() => setViewMode('amount')}
-              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 ${
-                viewMode === 'amount'
-                  ? 'bg-card text-text-light shadow-sm shadow-black/20'
-                  : 'text-text-card-muted hover:text-text-light'
-              }`}
-            >
-              <DollarSign className="w-4 h-4" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={viewMode === 'percent'}
-              aria-label="Show as percent"
-              title="Percent"
-              onClick={() => setViewMode('percent')}
-              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 ${
-                viewMode === 'percent'
-                  ? 'bg-card text-text-light shadow-sm shadow-black/20'
-                  : 'text-text-card-muted hover:text-text-light'
-              }`}
-            >
-              <Percent className="w-4 h-4" aria-hidden="true" />
-            </button>
-          </div>
-        ) : (
-          <div />
-        )}
-        <button
-          type="button"
-          onClick={downloadImage}
-          disabled={downloading}
-          aria-label="Save calendar as image"
-          className="min-h-[36px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-text-card-muted hover:text-text-light bg-card-lighter hover:bg-card-light transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 disabled:opacity-50"
-        >
-          <Download className="w-3.5 h-3.5" aria-hidden="true" />
-          {downloading ? 'Saving…' : 'Save as image'}
-        </button>
+            {downloading ? (
+              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Download className="w-4 h-4" aria-hidden="true" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Everything from here down is captured when saving as image. */}
@@ -310,15 +330,16 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
 
       {/* Header row — Mon-Fri on mobile (markets closed on weekends),
        *  full Sun-Sat + weekly column on desktop. */}
-      <div className="grid grid-cols-5 lg:grid-cols-[repeat(7,1fr)_120px] gap-1 lg:gap-2 mb-1 lg:mb-2">
+      <div className="grid grid-cols-5 lg:grid-cols-[repeat(5,1fr)_120px] gap-1 lg:gap-2 mb-1 lg:mb-2">
         {WEEKDAYS_FULL.map((day, i) => {
           const isWeekend = i === 0 || i === 6;
+          // Weekends are hidden on every breakpoint — markets are
+          // closed Sat/Sun, so weekend columns are pure clutter.
+          if (isWeekend) return null;
           return (
             <div
               key={day}
-              className={`text-center text-[10px] font-medium text-text-card-muted uppercase tracking-widest py-1 ${
-                isWeekend ? 'hidden lg:block' : ''
-              }`}
+              className="text-center text-[10px] font-medium text-text-card-muted uppercase tracking-widest py-1"
             >
               <span className="lg:hidden" aria-hidden="true">{WEEKDAYS_SHORT[i]}</span>
               <span className="hidden lg:inline">{day}</span>
@@ -334,16 +355,16 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
       {/* Weeks */}
       <div className="space-y-1 lg:space-y-2">
         {weeklyData.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-5 lg:grid-cols-[repeat(7,1fr)_120px] gap-1 lg:gap-2 items-stretch">
+          <div key={wi} className="grid grid-cols-5 lg:grid-cols-[repeat(5,1fr)_120px] gap-1 lg:gap-2 items-stretch">
             {week.days.map((day) => {
-              // Hide Sun/Sat cells on mobile — markets are closed,
-              // so weekend columns would always be empty clutter.
+              // Weekends (Sat/Sun) are hidden on every breakpoint —
+              // markets are closed so those columns are always empty.
               const dow = day.date.getDay();
               const isWeekend = dow === 0 || dow === 6;
-              const weekendHidden = isWeekend ? 'hidden lg:flex' : '';
+              if (isWeekend) return null;
 
               if (!day.inMonth) {
-                return <div key={day.key} className={`${weekendHidden} min-h-[44px] h-14 lg:h-20 rounded-lg lg:rounded-xl`} />;
+                return <div key={day.key} className="min-h-[44px] h-14 lg:h-20 rounded-lg lg:rounded-xl" />;
               }
 
               const d = day.data;
@@ -360,21 +381,21 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
                     type="button"
                     key={day.key}
                     aria-label={profitLabel}
-                    className={`${isWeekend ? 'hidden lg:flex' : 'flex'} min-h-[44px] h-14 lg:h-20 rounded-lg lg:rounded-xl flex-col items-center justify-center gap-0 lg:gap-0.5 cursor-pointer hover:ring-1 hover:ring-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 transition-all`}
+                    className={`flex min-h-[52px] h-16 lg:h-24 rounded-lg lg:rounded-xl flex-col items-center justify-center gap-0.5 lg:gap-1 cursor-pointer hover:ring-1 hover:ring-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 transition-all`}
                     onClick={() => setSelectedDay(day.key)}
                     style={{ backgroundColor: bgColor }}
                   >
-                    <div className="flex items-center gap-0.5">
-                      <span className="text-xs font-medium text-text-light tabular-nums">
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm lg:text-base font-semibold text-text-light tabular-nums leading-none">
                         {format(day.date, 'd')}
                       </span>
-                      {noteDays.has(day.key) && <StickyNote className="w-2 h-2 lg:w-2.5 lg:h-2.5 text-accent-blue" aria-hidden="true" />}
+                      {noteDays.has(day.key) && <StickyNote className="w-2.5 h-2.5 lg:w-3 lg:h-3 text-accent-blue" aria-hidden="true" />}
                     </div>
-                    <span className={`text-[11px] lg:text-[11px] font-bold leading-none tabular-nums ${profit >= 0 ? 'text-profit' : 'text-loss'}`}>
+                    <span className={`text-[13px] lg:text-sm font-bold leading-none tabular-nums ${profit >= 0 ? 'text-profit' : 'text-loss'}`}>
                       <span className="lg:hidden">{formatDayValue(profit, day.key, true)}</span>
                       <span className="hidden lg:inline">{formatDayValue(profit, day.key, false)}</span>
                     </span>
-                    <span className="hidden lg:block text-[10px] text-text-card-muted leading-none tabular-nums">
+                    <span className="hidden lg:block text-[11px] text-text-card-muted leading-none tabular-nums">
                       {d.trades} trade{d.trades !== 1 ? 's' : ''}
                     </span>
                   </button>
@@ -385,10 +406,10 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
                 <div
                   key={day.key}
                   aria-label={profitLabel}
-                  className={`${isWeekend ? 'hidden lg:flex' : 'flex'} min-h-[44px] h-14 lg:h-20 rounded-lg lg:rounded-xl flex-col items-center justify-center gap-0 lg:gap-0.5 opacity-25`}
+                  className={`flex min-h-[52px] h-16 lg:h-24 rounded-lg lg:rounded-xl flex-col items-center justify-center gap-0.5 lg:gap-1 opacity-25`}
                 >
                   <div className="flex items-center gap-0.5">
-                    <span className="text-xs font-medium text-text-card-muted tabular-nums">
+                    <span className="text-sm lg:text-base font-medium text-text-card-muted tabular-nums">
                       {format(day.date, 'd')}
                     </span>
                   </div>
