@@ -1,5 +1,5 @@
-import { useRef, useMemo } from 'react';
-import { Copy, Download, Clock } from 'lucide-react';
+import { useRef, useMemo, useState } from 'react';
+import { Copy, Download, Clock, DollarSign, Percent } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { getTradesForDate, formatDuration } from '../../utils/tradeStats';
 import { differenceInMinutes, parseISO } from 'date-fns';
@@ -51,13 +51,14 @@ function StatCell({ label, value, color, withDivider = false }) {
   );
 }
 
-export default function TodayCard({ trades }) {
+export default function TodayCard({ trades, allTrades, startingBalance = 0, balanceOps = [], hasDateFilter = false }) {
   const cardRef = useRef(null);
   const exportRef = useRef(null);
+  const [viewMode, setViewMode] = useState('amount'); // 'amount' | 'percent'
 
-  // How many distinct trading days are in the filtered set?
-  // 0 or 1 → single-day mode (the classic "today" card)
-  // 2+    → range mode (aggregate across the whole filter window)
+  // Scan the incoming trades once for: unique day keys (used when
+  // we need to label the range) and the latest close time (the
+  // "latest day" fallback for the single-day view).
   const { uniqueDayKeys, latestTradeDate } = useMemo(() => {
     if (!trades || trades.length === 0) return { uniqueDayKeys: [], latestTradeDate: null };
     const keys = new Set();
@@ -72,7 +73,11 @@ export default function TodayCard({ trades }) {
     return { uniqueDayKeys: [...keys].sort(), latestTradeDate: latest };
   }, [trades]);
 
-  const isRange = uniqueDayKeys.length > 1;
+  // Range mode only when the user EXPLICITLY set a date filter AND
+  // the window actually spans more than one trading day. Without a
+  // filter, the card always shows the latest trading day — that's
+  // the "Today" card's whole job.
+  const isRange = hasDateFilter && uniqueDayKeys.length > 1;
 
   // Single-day mode: latest trading day we actually have data for.
   // Range mode: null (we use the full trades array directly below).
@@ -130,9 +135,55 @@ export default function TodayCard({ trades }) {
   const lossDays = dayBuckets ? Object.values(dayBuckets).filter((p) => p < 0).length : 0;
   const totalDays = dayBuckets ? Object.keys(dayBuckets).length : 0;
 
+  // --------------------------------------------------------------
+  // Percentage baseline.
+  //
+  // The "starting balance" for this card is the running balance just
+  // BEFORE the first trade/op we're showing. We replay every prior
+  // trade + balance op (drawn from `allTrades`/`balanceOps`) up to,
+  // but not including, the first day rendered on the card.
+  // --------------------------------------------------------------
+  const baselineBalance = useMemo(() => {
+    const firstKey = isRange ? uniqueDayKeys[0] : today;
+    if (!firstKey) return Number(startingBalance) || 0;
+
+    let running = Number(startingBalance) || 0;
+    const historical = allTrades || trades || [];
+    for (const t of historical) {
+      const k = dateKeyUTC(t.closeTime || t.openTime);
+      if (k && k < firstKey) running += t.profit || 0;
+    }
+    // Skip the first balance op per account (initial deposit already
+    // represented in startingBalance).
+    const seenFirst = {};
+    for (const op of balanceOps || []) {
+      if (!op.time) continue;
+      const acct = op.account || '_default';
+      if (!seenFirst[acct]) { seenFirst[acct] = true; continue; }
+      const k = dateKeyUTC(op.time) || op.time.slice(0, 10);
+      if (k && k < firstKey) running += op.amount || 0;
+    }
+    return running;
+  }, [allTrades, trades, balanceOps, startingBalance, isRange, uniqueDayKeys, today]);
+
   if (cardTrades.length === 0) return null;
 
-  // Format a single trade's P/L with sign + currency
+  const canShowPercent = baselineBalance >= 0.01;
+  // Force amount mode if percent is impossible so we never render NaN.
+  const effectiveMode = canShowPercent ? viewMode : 'amount';
+
+  // Percent-aware signed formatter. Shows $X.XX or +/-X.X%.
+  const formatValue = (n) => {
+    if (effectiveMode === 'percent') {
+      const pct = (n / baselineBalance) * 100;
+      const abs = Math.abs(pct);
+      const s = abs < 10 ? abs.toFixed(1) : abs.toFixed(0);
+      return `${pct >= 0 ? '+' : '-'}${s}%`;
+    }
+    return `${n >= 0 ? '+' : '-'}$${fmtMoney(Math.abs(n))}`;
+  };
+
+  // Legacy $-only formatter kept for copyText + alt-text.
   const signed = (n) => `${n >= 0 ? '+' : '-'}$${fmtMoney(Math.abs(n))}`;
 
   async function exportImage() {
@@ -202,7 +253,47 @@ export default function TodayCard({ trades }) {
               <span aria-hidden="true" className="text-text-card-muted/40">·</span>
               <p className="text-[11px] text-text-card-muted tabular-nums truncate">{todayLabel}</p>
             </div>
-            <span className="text-[10px] uppercase tracking-[0.22em] font-semibold text-text-card-muted/35">Kalgoh</span>
+            <div className="flex items-center gap-2 shrink-0">
+              {canShowPercent && (
+                <div
+                  role="radiogroup"
+                  aria-label="Value display mode"
+                  className="inline-flex items-center gap-0.5 bg-white/[0.04] rounded-lg p-0.5"
+                >
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={viewMode === 'amount'}
+                    aria-label="Show as amount"
+                    title="Amount"
+                    onClick={() => setViewMode('amount')}
+                    className={`w-7 h-7 inline-flex items-center justify-center rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 ${
+                      viewMode === 'amount'
+                        ? 'bg-card-lighter text-text-light'
+                        : 'text-text-card-muted hover:text-text-light'
+                    }`}
+                  >
+                    <DollarSign className="w-3.5 h-3.5" aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={viewMode === 'percent'}
+                    aria-label="Show as percent"
+                    title="Percent"
+                    onClick={() => setViewMode('percent')}
+                    className={`w-7 h-7 inline-flex items-center justify-center rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 ${
+                      viewMode === 'percent'
+                        ? 'bg-card-lighter text-text-light'
+                        : 'text-text-card-muted hover:text-text-light'
+                    }`}
+                  >
+                    <Percent className="w-3.5 h-3.5" aria-hidden="true" />
+                  </button>
+                </div>
+              )}
+              <span className="text-[10px] uppercase tracking-[0.22em] font-semibold text-text-card-muted/35">Kalgoh</span>
+            </div>
           </div>
 
           {/* Hero P/L */}
@@ -210,7 +301,7 @@ export default function TodayCard({ trades }) {
             <p
               className={`text-[42px] leading-[0.95] lg:text-[72px] font-bold tabular-nums tracking-[-0.035em] ${isPositive ? 'text-profit' : 'text-loss'}`}
             >
-              {isPositive ? '+' : '-'}${fmtMoney(Math.abs(profit))}
+              {formatValue(profit)}
             </p>
             <p className="mt-3 text-xs lg:text-sm text-text-card-muted tabular-nums">
               <span className="text-text-card">{cardTrades.length}</span> {tradeWord}
@@ -257,14 +348,14 @@ export default function TodayCard({ trades }) {
               <span aria-hidden="true" className="absolute left-0 top-0.5 bottom-0.5 w-px bg-white/[0.06]" />
               <dt className="text-[10px] uppercase tracking-[0.14em] font-medium text-text-card-muted/80">Best</dt>
               <dd className={`mt-1.5 text-base lg:text-lg font-semibold tabular-nums ${bestPositive ? 'text-profit' : 'text-loss'}`}>
-                {signed(bestTrade)}
+                {formatValue(bestTrade)}
               </dd>
             </div>
             <div className="relative pl-4 lg:pl-6">
               <span aria-hidden="true" className="absolute left-0 top-0.5 bottom-0.5 w-px bg-white/[0.06]" />
               <dt className="text-[10px] uppercase tracking-[0.14em] font-medium text-text-card-muted/80">Worst</dt>
               <dd className={`mt-1.5 text-base lg:text-lg font-semibold tabular-nums ${worstPositive ? 'text-profit' : 'text-loss'}`}>
-                {signed(worstTrade)}
+                {formatValue(worstTrade)}
               </dd>
             </div>
           </dl>

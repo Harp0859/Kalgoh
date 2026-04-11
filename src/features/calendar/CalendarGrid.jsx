@@ -220,29 +220,31 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
               type="button"
               role="radio"
               aria-checked={viewMode === 'amount'}
+              aria-label="Show as amount"
+              title="Amount"
               onClick={() => setViewMode('amount')}
-              className={`min-h-[36px] flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 ${
+              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 ${
                 viewMode === 'amount'
                   ? 'bg-card text-text-light shadow-sm shadow-black/20'
                   : 'text-text-card-muted hover:text-text-light'
               }`}
             >
-              <DollarSign className="w-3.5 h-3.5" aria-hidden="true" />
-              Amount
+              <DollarSign className="w-4 h-4" aria-hidden="true" />
             </button>
             <button
               type="button"
               role="radio"
               aria-checked={viewMode === 'percent'}
+              aria-label="Show as percent"
+              title="Percent"
               onClick={() => setViewMode('percent')}
-              className={`min-h-[36px] flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 ${
+              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 ${
                 viewMode === 'percent'
                   ? 'bg-card text-text-light shadow-sm shadow-black/20'
                   : 'text-text-card-muted hover:text-text-light'
               }`}
             >
-              <Percent className="w-3.5 h-3.5" aria-hidden="true" />
-              Percent
+              <Percent className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
         ) : (

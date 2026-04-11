@@ -89,31 +89,39 @@ function AuthenticatedApp({ user, signOut, changeEmail }) {
 
   useEffect(() => { loadTrades(); }, [loadTrades, refreshKey]);
 
-  // Auto-sync all connected brokers once on login.
-  // Runs in the background — doesn't block the UI.
-  useEffect(() => {
-    let cancelled = false;
-    async function autoSync() {
-      try {
-        const connections = await listBrokerConnections();
-        const active = connections.filter((c) => c.status === 'active');
-        if (active.length === 0) return;
-
-        setAutoSyncing(true);
-        await Promise.allSettled(active.map((c) => syncBrokerNow(c.id)));
-        if (cancelled) return;
-        setRefreshKey((k) => k + 1); // reload trades
-      } catch (e) {
-        console.error('Auto-sync failed:', e);
-      } finally {
-        if (!cancelled) setAutoSyncing(false);
-      }
-    }
-    autoSync();
-    return () => { cancelled = true; };
-    // Only run once per session — empty deps on purpose.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // -----------------------------------------------------------------
+  // Auto-sync on login — DISABLED to save MetaApi costs.
+  //
+  // Every auto-sync triggers a full MetaApi deploy → fetch → undeploy
+  // cycle which is billed per hour of deployment. With manual-only
+  // sync the user pays only when they click the Sync button.
+  //
+  // Code kept intact below (not deleted) so we can re-enable it
+  // quickly when auto-sync is worth the cost again.
+  // -----------------------------------------------------------------
+  // useEffect(() => {
+  //   let cancelled = false;
+  //   async function autoSync() {
+  //     try {
+  //       const connections = await listBrokerConnections();
+  //       const active = connections.filter((c) => c.status === 'active');
+  //       if (active.length === 0) return;
+  //
+  //       setAutoSyncing(true);
+  //       await Promise.allSettled(active.map((c) => syncBrokerNow(c.id)));
+  //       if (cancelled) return;
+  //       setRefreshKey((k) => k + 1); // reload trades
+  //     } catch (e) {
+  //       console.error('Auto-sync failed:', e);
+  //     } finally {
+  //       if (!cancelled) setAutoSyncing(false);
+  //     }
+  //   }
+  //   autoSync();
+  //   return () => { cancelled = true; };
+  //   // Only run once per session — empty deps on purpose.
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, []);
 
   // Load per-account balance data
   useEffect(() => {
@@ -207,7 +215,7 @@ function AuthenticatedApp({ user, signOut, changeEmail }) {
           {/* Overview */}
           {tab === 'overview' && hasTrades && (
             hasFiltered && stats ? (
-              <Overview stats={stats} trades={filteredTrades} startingBalance={startingBalance} hasBalanceOps={balanceOps.length > 1} />
+              <Overview stats={stats} trades={filteredTrades} allTrades={accountTrades} balanceOps={balanceOps} startingBalance={startingBalance} hasBalanceOps={balanceOps.length > 1} hasDateFilter={hasDateFilter} />
             ) : <EmptyState message="No trades for this filter." />
           )}
 

@@ -17,7 +17,7 @@ const fmtMoneySigned = (n) => {
 const fmtMoneyCompact = (n) =>
   n.toLocaleString(undefined, { maximumFractionDigits: 0 });
 
-export default function Overview({ stats, startingBalance, hasBalanceOps, trades }) {
+export default function Overview({ stats, startingBalance, hasBalanceOps, trades, allTrades, balanceOps, hasDateFilter }) {
   const isPositive = stats.netProfit >= 0;
   const gradientColor = isPositive ? 'var(--color-profit)' : 'var(--color-loss)';
   const lastBalance = stats.equityCurve.length > 0 ? stats.equityCurve[stats.equityCurve.length - 1].balance : startingBalance;
@@ -29,7 +29,13 @@ export default function Overview({ stats, startingBalance, hasBalanceOps, trades
 
   return (
     <div className="space-y-4 lg:space-y-5 animate-[fadeIn_0.3s_ease-out]">
-      <TodayCard trades={trades} />
+      <TodayCard
+        trades={trades}
+        allTrades={allTrades}
+        startingBalance={startingBalance}
+        balanceOps={balanceOps}
+        hasDateFilter={hasDateFilter}
+      />
 
       {/* Stats row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
