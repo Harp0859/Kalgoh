@@ -151,6 +151,37 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
     return `${profit >= 0 ? '+' : '-'}$${s}`;
   };
 
+  // Convert a $ amount into a signed "X.X%" string relative to a given
+  // baseline. Returns "—" when the baseline is too small to be
+  // meaningful (avoids exploding percentages on residual balances).
+  const toPctString = (amount, baseline) => {
+    if (!baseline || baseline < 0.01) return '—';
+    const pct = (amount / baseline) * 100;
+    const abs = Math.abs(pct);
+    const s = abs < 10 ? abs.toFixed(1) : abs.toFixed(0);
+    return `${pct >= 0 ? '+' : '-'}${s}%`;
+  };
+
+  // Base balance for an entire *week* — running balance at the start
+  // of that week's first TRADING day. Weeks with zero trades return 0
+  // so the caller can skip the denominator entirely.
+  const weekBaseline = (week) => {
+    for (const day of week.days) {
+      if (day.inMonth && day.data && day.data.trades > 0) {
+        return dayStartBalance[day.key] || 0;
+      }
+    }
+    return 0;
+  };
+
+  // Base balance for the whole *month* — running balance at the start
+  // of the month's first trading day (falls back to starting balance).
+  const monthBaseline = (() => {
+    const firstTradingDay = calendarDays.find((d) => d.trades > 0);
+    if (firstTradingDay) return dayStartBalance[firstTradingDay.dateKey] || Number(startingBalance) || 0;
+    return Number(startingBalance) || 0;
+  })();
+
   async function downloadImage() {
     if (!captureRef.current || downloading) return;
     setDownloading(true);
@@ -257,7 +288,9 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
             <span className={`text-xs font-semibold rounded-full px-2.5 lg:px-3 py-0.5 lg:py-1 tabular-nums ${
               monthProfit >= 0 ? 'text-profit bg-profit/10' : 'text-loss bg-loss/10'
             }`}>
-              {monthProfit >= 0 ? '+' : '-'}${Math.abs(monthProfit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {viewMode === 'percent' && canShowPercent
+                ? toPctString(monthProfit, monthBaseline)
+                : `${monthProfit >= 0 ? '+' : '-'}$${Math.abs(monthProfit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
             </span>
           </div>
         </div>
@@ -371,7 +404,9 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
               {week.weekTrades > 0 ? (
                 <>
                   <span className={`text-base font-bold tabular-nums ${week.weekProfit >= 0 ? 'text-profit' : 'text-loss'}`}>
-                    {week.weekProfit >= 0 ? '+' : '-'}${Math.abs(week.weekProfit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {viewMode === 'percent' && canShowPercent
+                      ? toPctString(week.weekProfit, weekBaseline(week))
+                      : `${week.weekProfit >= 0 ? '+' : '-'}$${Math.abs(week.weekProfit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                   </span>
                   <span className="text-[10px] text-text-card-muted mt-0.5 tabular-nums">{week.weekTrades} trades</span>
                 </>
@@ -386,14 +421,49 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
       {/* Summary */}
       {tradingDays > 0 && (() => {
         const fmtMoney = (n) => Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const usePct = viewMode === 'percent' && canShowPercent;
+
+        // Per-day percentages for best/worst/avg when in % mode.
+        const dailyPcts = calendarDays
+          .filter((d) => d.trades > 0)
+          .map((d) => {
+            const base = dayStartBalance[d.dateKey] || monthBaseline;
+            return base >= 0.01 ? (d.profit / base) * 100 : 0;
+          });
+        const fmtPct = (pct) => {
+          const abs = Math.abs(pct);
+          const s = abs < 10 ? abs.toFixed(1) : abs.toFixed(0);
+          return `${pct >= 0 ? '+' : '-'}${s}%`;
+        };
+
         const avgDay = monthProfit / tradingDays;
         const bestDay = Math.max(...calendarDays.map((d) => d.profit));
         const worstDay = Math.min(...calendarDays.map((d) => d.profit));
+
+        const avgDayPct = dailyPcts.length ? dailyPcts.reduce((a, b) => a + b, 0) / dailyPcts.length : 0;
+        const bestDayPct = dailyPcts.length ? Math.max(...dailyPcts) : 0;
+        const worstDayPct = dailyPcts.length ? Math.min(...dailyPcts) : 0;
+
         const stats = [
           { label: 'Win Days', value: `${winDays}/${tradingDays}`, sub: `${((winDays / tradingDays) * 100).toFixed(0)}%`, icon: Calendar },
-          { label: 'Avg Day', value: `${avgDay >= 0 ? '+' : '-'}$${fmtMoney(avgDay)}`, positive: avgDay >= 0, icon: BarChart3 },
-          { label: 'Best Day', value: `+$${fmtMoney(bestDay)}`, positive: true, icon: TrendingUp },
-          { label: 'Worst Day', value: `-$${fmtMoney(worstDay)}`, positive: false, icon: TrendingDown },
+          {
+            label: 'Avg Day',
+            value: usePct ? fmtPct(avgDayPct) : `${avgDay >= 0 ? '+' : '-'}$${fmtMoney(avgDay)}`,
+            positive: (usePct ? avgDayPct : avgDay) >= 0,
+            icon: BarChart3,
+          },
+          {
+            label: 'Best Day',
+            value: usePct ? fmtPct(bestDayPct) : `+$${fmtMoney(bestDay)}`,
+            positive: true,
+            icon: TrendingUp,
+          },
+          {
+            label: 'Worst Day',
+            value: usePct ? fmtPct(worstDayPct) : `-$${fmtMoney(worstDay)}`,
+            positive: false,
+            icon: TrendingDown,
+          },
         ];
         return (
           <div className="mt-6 lg:mt-8 grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-4">
