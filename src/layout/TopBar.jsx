@@ -17,11 +17,24 @@ export default function TopBar({ title, subtitle, hasTrades, tab, accounts, sele
        *  above the bar. Main has a matching top padding on mobile so
        *  content isn't hidden under this bar. */}
       <div
-        className="lg:hidden fixed top-0 inset-x-0 z-30 px-4 pb-3
-          pt-[calc(env(safe-area-inset-top)+0.75rem)]
-          bg-bg
-          border-b border-border-subtle
-          flex items-center justify-between"
+        className="lg:hidden flex items-center justify-between border-b border-border-subtle bg-bg"
+        style={{
+          // Force the positioning with inline styles to sidestep any
+          // Tailwind JIT quirks with arbitrary calc() values and to
+          // guarantee the bar sits at viewport y=0. Padding-top reserves
+          // space for the iOS notch/status bar so the opaque background
+          // extends all the way up to the top edge of the screen.
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 40,
+          paddingTop: 'calc(env(safe-area-inset-top) + 12px)',
+          paddingBottom: 12,
+          paddingLeft: 16,
+          paddingRight: 16,
+          backgroundColor: 'var(--color-bg)',
+        }}
       >
         <button
           type="button"

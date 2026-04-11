@@ -190,7 +190,7 @@ function AuthenticatedApp({ user, signOut, changeEmail }) {
       <main
         id="main-content"
         tabIndex={-1}
-        className="lg:ml-[200px] px-4 lg:px-8 pt-[calc(env(safe-area-inset-top)+76px)] lg:pt-6 pb-8 lg:pb-16 pb-safe focus:outline-none"
+        className="lg:ml-[200px] px-4 lg:px-8 pt-[calc(env(safe-area-inset-top)+76px)] lg:!pt-6 pb-8 lg:pb-16 pb-safe focus:outline-none"
       >
         <TopBar
           title={meta.title}

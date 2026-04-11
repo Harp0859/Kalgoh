@@ -9,7 +9,7 @@ export async function listBrokerConnections() {
 
   const { data, error } = await supabase
     .from('broker_connections')
-    .select('id, account_name, platform, server, login, status, last_sync_at, last_error, created_at')
+    .select('id, account_name, platform, server, login, status, last_sync_at, last_error, created_at, updated_at')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
@@ -24,6 +24,10 @@ export async function listBrokerConnections() {
     lastSyncAt: c.last_sync_at,
     lastError: c.last_error,
     createdAt: c.created_at,
+    // Exposed so the UI can detect stale `syncing` locks (sync rows
+    // whose edge function crashed mid-execution and never flipped
+    // the status back to active/error).
+    updatedAt: c.updated_at,
   }));
 }
 

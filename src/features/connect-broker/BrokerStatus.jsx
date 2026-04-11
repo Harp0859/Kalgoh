@@ -210,13 +210,32 @@ export default function BrokerStatus({ onDataChange }) {
                   )}
                 </div>
                 <div className="flex items-center gap-1 ml-1 shrink-0">
+                  {(() => {
+                    // A row in 'syncing' is only actually in-flight if we
+                    // started the sync from this browser session (tracked
+                    // via syncingId). Otherwise it's a stale lock from a
+                    // crashed edge function run, and the user needs to be
+                    // able to retry it. Similarly, a 'syncing' row whose
+                    // updated_at is more than 5 minutes old is stale — the
+                    // atomic lock in the edge function already treats
+                    // those as reclaimable.
+                    const inFlight = syncingId === c.id;
+                    const staleLock =
+                      c.status === 'syncing' &&
+                      c.updatedAt &&
+                      Date.now() - new Date(c.updatedAt).getTime() > 5 * 60 * 1000;
+                    const blockSync =
+                      inFlight ||
+                      c.status === 'provisioning' ||
+                      (c.status === 'syncing' && !staleLock);
+                    return (
                   <button
                     type="button"
                     onClick={() => handleSync(c)}
-                    disabled={syncingId === c.id || c.status === 'provisioning' || c.status === 'syncing'}
+                    disabled={blockSync}
                     className="w-10 h-10 flex items-center justify-center rounded-xl text-text-card-muted hover:text-text-light hover:bg-card disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 focus-visible:ring-offset-2 focus-visible:ring-offset-card transition-colors"
                     aria-label={`Sync ${c.accountName} now`}
-                    title="Sync now"
+                    title={staleLock ? 'Sync appears stuck — click to retry' : 'Sync now'}
                   >
                     {syncingId === c.id ? (
                       <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
@@ -224,6 +243,8 @@ export default function BrokerStatus({ onDataChange }) {
                       <RefreshCw className="w-4 h-4" aria-hidden="true" />
                     )}
                   </button>
+                    );
+                  })()}
                   <button
                     type="button"
                     onClick={() => handleDisconnect(c)}

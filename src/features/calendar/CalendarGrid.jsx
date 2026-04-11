@@ -472,8 +472,8 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
             {stats.map((stat) => (
               <div key={stat.label} className="bg-card-lighter rounded-xl lg:rounded-2xl p-3 lg:p-4 min-h-[60px] lg:min-h-[80px]">
                 <div className="flex items-center gap-1.5 lg:gap-2 mb-1 lg:mb-2">
-                  <stat.icon className="w-3 h-3 lg:w-3.5 lg:h-3.5 text-text-card-muted" aria-hidden="true" />
-                  <p className="text-[10px] uppercase tracking-widest text-text-card-muted font-medium">{stat.label}</p>
+                  <stat.icon className="w-3 h-3 lg:w-3.5 lg:h-3.5 text-text-card-muted shrink-0" aria-hidden="true" />
+                  <p className="text-[10px] uppercase tracking-[0.1em] text-text-card-muted font-medium whitespace-nowrap">{stat.label}</p>
                 </div>
                 <p className={`text-base lg:text-lg font-bold tabular-nums ${
                   stat.positive === undefined ? 'text-text-light' : stat.positive ? 'text-profit' : 'text-loss'
