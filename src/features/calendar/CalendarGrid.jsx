@@ -220,7 +220,7 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
   }
 
   return (
-    <div className="relative max-w-[820px] mx-auto">
+    <div className="relative max-w-[860px] mx-auto">
       {/* max-width cap is important: without it, zooming out in the
        *  browser (Cmd+-) makes the container grow in CSS pixels,
        *  which makes each `aspect-square` cell grow too — producing
@@ -289,12 +289,15 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
 
       {/* Everything from here down is captured when saving as image. */}
       <div ref={captureRef}>
-      {/* Header row 1: brand lockup (left) + month nav (right).
-       *  The brand lives inside the capture area so the downloaded
-       *  PNG is branded for social sharing. The floating $/% + save
-       *  controls overlay sits above this row, to the far right,
-       *  and is outside the capture. */}
-      <div className="flex items-center justify-between gap-3 mb-4 lg:mb-5 h-12 lg:h-14 pr-36 lg:pr-44">
+      {/* Header row 1: brand lockup (left) + month nav (centered on
+       *  desktop, right on mobile). The brand lives inside the
+       *  capture area so the downloaded PNG is branded for social
+       *  sharing. The floating $/% + save controls overlay sits
+       *  above this row, to the far right, and is outside the
+       *  capture. On desktop the month nav is absolute-centered so
+       *  it lives at the true midpoint of the calendar width,
+       *  regardless of the brand / controls widths. */}
+      <div className="relative flex items-center justify-between lg:justify-start gap-3 mb-4 lg:mb-5 h-12 lg:h-14 pr-36 lg:pr-44">
         <div className="flex items-center gap-2 text-text-light">
           <img
             src={logoSrc}
@@ -307,7 +310,7 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5 lg:gap-2">
+        <div className="flex items-center gap-1.5 lg:gap-2 lg:absolute lg:left-1/2 lg:-translate-x-1/2 lg:top-1/2 lg:-translate-y-1/2">
           <button
             type="button"
             onClick={() => setMonthIdx((i) => Math.max(0, i - 1))}
@@ -330,23 +333,35 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
             <ChevronRight className="w-4 h-4 lg:w-5 lg:h-5" aria-hidden="true" />
           </button>
         </div>
-      </div>
 
-      {/* Hero KPI — the month's P&L is the most important number on
-       *  this page, so it gets proper weight. Subtitle carries the
-       *  trading-day and trade counts so the old meta pills become
-       *  redundant. */}
-      <div className="mb-4 lg:mb-6">
-        <div className={`text-3xl lg:text-5xl font-bold tabular-nums leading-none tracking-tight ${
-          monthProfit >= 0 ? 'text-profit' : 'text-loss'
-        }`}>
+        {/* Month total pill — desktop only, absolute-positioned so
+         *  it sits inside the capture area just to the left of the
+         *  floating $/% + save controls overlay. Screenshots still
+         *  show the headline number; the header stays compact. */}
+        <div
+          className={`hidden lg:flex absolute top-1/2 left-3/4 -translate-x-1/2 -translate-y-1/2 h-11 w-[120px] items-center justify-center rounded-xl ring-hairline tabular-nums font-bold text-base leading-none ${
+            monthProfit >= 0 ? 'text-profit' : 'text-loss'
+          }`}
+          style={{ backgroundColor: monthProfit >= 0 ? 'var(--color-profit-bg)' : 'var(--color-loss-bg)' }}
+        >
           {viewMode === 'percent' && canShowPercent
             ? toPctString(monthProfit, monthBaseline)
-            : `${monthProfit >= 0 ? '+' : '-'}$${Math.abs(monthProfit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            : fmtCompactMoney(monthProfit)}
         </div>
-        <p className="mt-1.5 lg:mt-2 text-xs lg:text-sm text-text-card-muted tabular-nums">
-          {tradingDays} trading {tradingDays === 1 ? 'day' : 'days'} · {monthTrades} {monthTrades === 1 ? 'trade' : 'trades'}
-        </p>
+      </div>
+
+      {/* Mobile-only compact total line. Desktop shows the pill
+       *  inside the header row instead. Kept inside captureRef so
+       *  screenshots always include the headline number. */}
+      <div className="lg:hidden flex items-center justify-between mb-3">
+        <span className={`font-bold text-lg leading-none tabular-nums ${monthProfit >= 0 ? 'text-profit' : 'text-loss'}`}>
+          {viewMode === 'percent' && canShowPercent
+            ? toPctString(monthProfit, monthBaseline)
+            : fmtCompactMoney(monthProfit)}
+        </span>
+        <span className="text-[11px] text-text-card-muted tabular-nums">
+          {tradingDays} {tradingDays === 1 ? 'day' : 'days'} · {monthTrades} {monthTrades === 1 ? 'trade' : 'trades'}
+        </span>
       </div>
 
       {/* Header row — Mon-Fri on mobile (markets closed on weekends),
