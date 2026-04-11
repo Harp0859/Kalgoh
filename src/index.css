@@ -51,8 +51,8 @@
   --color-accent-blue: #1e5fd9;        /* strong, confident blue */
   --color-profit: #a35614;             /* deep burnt amber — 6.5:1 on white */
   --color-profit-bg: rgba(163, 86, 20, 0.14);
-  --color-loss: #2f4a6b;               /* deep navy-slate — distinct from body text, ~9:1 on white */
-  --color-loss-bg: rgba(47, 74, 107, 0.12);
+  --color-loss: #52525b;               /* cool neutral grey — 7:1 on white, reads as "loss" without being red */
+  --color-loss-bg: rgba(82, 82, 91, 0.12);
   --color-border: #d0caba;             /* visible body border */
   --color-border-card: #e2ddcb;        /* visible hairline on white cards */
   --color-border-subtle: rgba(20, 15, 0, 0.08);
@@ -90,8 +90,8 @@
   --color-accent-blue: #60a5fa;
   --color-profit: #e8a04a;
   --color-profit-bg: rgba(232, 160, 74, 0.16);
-  --color-loss: #7d94b0;               /* cool desat navy — matches light-mode loss family */
-  --color-loss-bg: rgba(125, 148, 176, 0.18);
+  --color-loss: #9ca3af;               /* light grey — matches light-mode loss family */
+  --color-loss-bg: rgba(156, 163, 175, 0.18);
   --color-border: #2a2a2a;
   --color-border-card: #2e2e2e;
   --color-border-subtle: rgba(255, 255, 255, 0.06);
