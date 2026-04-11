@@ -27,7 +27,7 @@ export default function TradeDistribution({ distribution, avgWin, avgLoss, expec
           <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
           <Bar dataKey="count" name="Trades" radius={[3, 3, 0, 0]} animationDuration={600} activeBar={{ fill: 'rgba(255,255,255,0.12)', radius: [3, 3, 0, 0] }}>
             {distribution.map((entry, i) => (
-              <Cell key={i} fill={entry.mid >= 0 ? '#4ade80' : '#f87171'} fillOpacity={0.7} />
+              <Cell key={i} fill={entry.mid >= 0 ? 'var(--color-profit)' : 'var(--color-loss)'} fillOpacity={0.8} />
             ))}
           </Bar>
         </BarChart>

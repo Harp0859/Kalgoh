@@ -11,11 +11,15 @@ export default function TopBar({ title, subtitle, hasTrades, tab, accounts, sele
       {/* Mobile: fixed hamburger + brand, frosted over scrolled content.
        *  Uses `fixed` rather than `sticky` because sticky would be
        *  bounded by the <header> element's height and scroll away once
-       *  the title/filters exit the viewport. Main has a matching top
-       *  padding on mobile so content isn't hidden under this bar. */}
+       *  the title/filters exit the viewport. Padding-top includes the
+       *  safe-area inset so the frosted background extends up into the
+       *  iOS notch area — otherwise scrolling content shows through
+       *  above the bar. Main has a matching top padding on mobile so
+       *  content isn't hidden under this bar. */}
       <div
-        className="lg:hidden fixed top-0 inset-x-0 z-30 px-4 pt-3 pb-3
-          bg-bg/80 backdrop-blur-xl backdrop-saturate-150
+        className="lg:hidden fixed top-0 inset-x-0 z-30 px-4 pb-3
+          pt-[calc(env(safe-area-inset-top)+0.75rem)]
+          bg-bg/85 backdrop-blur-xl backdrop-saturate-150
           border-b border-white/[0.04]
           flex items-center justify-between"
       >

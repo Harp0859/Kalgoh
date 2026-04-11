@@ -19,12 +19,12 @@ const fmtMoneyCompact = (n) =>
 
 export default function Overview({ stats, startingBalance, hasBalanceOps, trades }) {
   const isPositive = stats.netProfit >= 0;
-  const gradientColor = isPositive ? '#4ade80' : '#f87171';
+  const gradientColor = isPositive ? 'var(--color-profit)' : 'var(--color-loss)';
   const lastBalance = stats.equityCurve.length > 0 ? stats.equityCurve[stats.equityCurve.length - 1].balance : startingBalance;
 
   const winRateData = [
-    { name: 'Wins', value: stats.wins, color: '#4ade80' },
-    { name: 'Losses', value: stats.losses, color: '#f87171' },
+    { name: 'Wins', value: stats.wins, color: 'var(--color-profit)' },
+    { name: 'Losses', value: stats.losses, color: 'var(--color-loss)' },
   ];
 
   return (
@@ -138,7 +138,7 @@ export default function Overview({ stats, startingBalance, hasBalanceOps, trades
               <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
               <ReferenceLine y={0} stroke="#444" />
               <Bar dataKey="profit" name="P/L" radius={[3, 3, 0, 0]} animationDuration={600} activeBar={{ fill: 'rgba(255,255,255,0.12)', radius: [3, 3, 0, 0] }}>
-                {stats.dailyPnL.map((entry, i) => <Cell key={i} fill={entry.profit >= 0 ? '#4ade80' : '#f87171'} fillOpacity={0.8} />)}
+                {stats.dailyPnL.map((entry, i) => <Cell key={i} fill={entry.profit >= 0 ? 'var(--color-profit)' : 'var(--color-loss)'} fillOpacity={0.85} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>

@@ -118,11 +118,18 @@ export async function undeployAccount(token: string, accountId: string): Promise
 // Wait until the account is DEPLOYED + CONNECTED to the broker.
 // MetaStats requires an active broker connection, not just a deployed terminal,
 // so we poll until connectionStatus === 'CONNECTED'.
+//
+// First-time deploys for some brokers (Vantage, IC Markets with unusual
+// server names, etc.) routinely take 3-4 minutes because MetaApi has to
+// spin up a fresh terminal AND complete a broker auth handshake on a
+// cold cache. A 120s deadline was too tight and produced false failures
+// on accounts that were actually fine. 240s is a better default.
+//
 // Polls every 3s up to maxMs. Returns the final state on success.
 export async function waitUntilConnected(
   token: string,
   accountId: string,
-  maxMs = 120000,
+  maxMs = 240000,
 ): Promise<{ state: string; connectionStatus?: string }> {
   const deadline = Date.now() + maxMs;
   let last: { state: string; connectionStatus?: string } = { state: 'UNKNOWN' };
@@ -133,8 +140,13 @@ export async function waitUntilConnected(
     }
     await new Promise((r) => setTimeout(r, 3000));
   }
+  // Emit a descriptive message that the frontend can pattern-match on to
+  // show a friendlier "still deploying, try again in a minute" banner.
   throw new Error(
-    `Account not ready within ${maxMs}ms. state=${last.state} connectionStatus=${last.connectionStatus || '-'}`,
+    `Account not ready within ${Math.round(maxMs / 1000)}s. ` +
+      `state=${last.state} connectionStatus=${last.connectionStatus || '-'}. ` +
+      `First-time broker deploys can take up to 5 minutes — the account is saved, ` +
+      `try syncing again from the brokers list in a minute.`,
   );
 }
 

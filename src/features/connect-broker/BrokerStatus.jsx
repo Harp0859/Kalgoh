@@ -3,6 +3,29 @@ import { Link2, Loader2, RefreshCw, Trash2, CheckCircle, AlertCircle, Clock, Plu
 import { listBrokerConnections, syncBrokerNow, disconnectBroker } from './api';
 import ConnectBrokerDialog from './ConnectBrokerDialog';
 
+// Turn a raw sync error into a short, user-friendly line. Unknown
+// errors fall back to the raw text so we don't hide information.
+function friendlySyncError(raw) {
+  if (!raw || typeof raw !== 'string') return 'Sync failed. Try again in a moment.';
+  const lower = raw.toLowerCase();
+  if (lower.includes('account not ready') || lower.includes('state=deploying')) {
+    return 'Still deploying on MetaApi (first sync can take up to 5 minutes). Hit Sync again in a minute.';
+  }
+  if (lower.includes('e_auth') || lower.includes('failed to authenticate')) {
+    return "Couldn't sign in to your broker. Verify the login, investor password, and server name in the terminal.";
+  }
+  if (lower.includes('e_srv_not_found') || lower.includes('server is not supported')) {
+    return 'Server name not recognised by MetaApi. Disconnect this account and re-add it using the broker picker.';
+  }
+  if (lower.includes('429') || lower.includes('too many')) {
+    return 'MetaApi is rate-limiting this account. Wait a minute and try again.';
+  }
+  if (lower.includes('network') || lower.includes('fetch failed')) {
+    return "Network error reaching MetaApi. Check your connection and retry.";
+  }
+  return raw.length < 140 ? raw : raw.slice(0, 140) + '…';
+}
+
 function relativeTime(iso) {
   if (!iso) return 'never';
   const then = new Date(iso).getTime();
@@ -181,7 +204,9 @@ export default function BrokerStatus({ onDataChange }) {
                     {c.platform.toUpperCase()} &middot; {c.server} &middot; #{c.login} &middot; synced {relativeTime(c.lastSyncAt)}
                   </p>
                   {c.status === 'error' && c.lastError && (
-                    <p className="text-xs text-loss mt-1 truncate">{c.lastError}</p>
+                    <p className="text-xs text-loss mt-1 leading-relaxed" title={c.lastError}>
+                      {friendlySyncError(c.lastError)}
+                    </p>
                   )}
                 </div>
                 <div className="flex items-center gap-1 ml-1 shrink-0">

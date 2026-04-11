@@ -7,7 +7,6 @@ export default function HourlyHeatmap({ hourlyStats }) {
   const active = hourlyStats.filter((h) => h.trades > 0);
   if (active.length === 0) return null;
 
-  const maxProfit = Math.max(...hourlyStats.map((x) => Math.abs(x.profit)), 1);
   const best = active.reduce((a, b) => a.profit > b.profit ? a : b);
   const worst = active.reduce((a, b) => a.profit < b.profit ? a : b);
   const busiest = active.reduce((a, b) => a.trades > b.trades ? a : b);
@@ -20,9 +19,14 @@ export default function HourlyHeatmap({ hourlyStats }) {
       </div>
       <div className="grid grid-cols-6 lg:grid-cols-12 gap-1.5">
         {hourlyStats.map((h) => {
-          const intensity = h.trades > 0 ? Math.min(Math.abs(h.profit) / maxProfit, 1) : 0;
-          const alpha = h.trades > 0 ? 0.15 + intensity * 0.6 : 0;
-          const bg = h.trades === 0 ? 'rgba(255,255,255,0.02)' : h.profit >= 0 ? `rgba(74, 222, 128, ${alpha})` : `rgba(248, 113, 113, ${alpha})`;
+          // Dual-toned: one subtle orange for any profit hour, one
+          // subtle grey for any loss hour. Magnitude is conveyed by
+          // the printed number, not the cell shade.
+          const bg = h.trades === 0
+            ? 'color-mix(in srgb, var(--color-text-card-muted) 6%, transparent)'
+            : h.profit >= 0
+              ? 'color-mix(in srgb, var(--color-profit) 16%, transparent)'
+              : 'color-mix(in srgb, var(--color-loss) 16%, transparent)';
           return (
             <div
               key={h.hour}

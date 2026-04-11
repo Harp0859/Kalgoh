@@ -15,6 +15,63 @@ import {
 import { connectBroker, fetchBrokers } from './api';
 import SearchableCombobox from '../../shared/SearchableCombobox';
 
+/**
+ * Translate a raw backend / MetaApi error string into a human-friendly
+ * summary for the dialog's error banner. Unknown errors fall back to a
+ * generic message; the full raw text is always available as `details`
+ * so the user can click "Show details" if they want the specifics.
+ */
+function friendlyConnectError(raw) {
+  const fallback = {
+    title: 'Could not connect this account',
+    message: 'Something went wrong while provisioning the broker connection. Please try again in a moment.',
+    details: raw || '',
+  };
+  if (!raw || typeof raw !== 'string') return fallback;
+  const lower = raw.toLowerCase();
+
+  if (lower.includes('e_auth') || lower.includes('failed to authenticate') || lower.includes('invalid account') || lower.includes('account disabled')) {
+    return {
+      title: "We couldn't sign in to your broker",
+      message:
+        'Double-check the login, investor password, and server name exactly as they appear in your MT4/MT5 terminal. Passwords are case-sensitive and server names include the trailing number (e.g. "VantageInternational-Live 15").',
+      details: raw,
+    };
+  }
+  if (lower.includes('e_srv_not_found') || lower.includes('server not found') || lower.includes('server is not supported')) {
+    return {
+      title: "That server name doesn't exist",
+      message:
+        'MetaApi doesn\'t recognise this server. Pick your broker from the list — or open your MT5 terminal and copy the exact server string from the login screen.',
+      details: raw,
+    };
+  }
+  if (lower.includes('429') || lower.includes('too many requests') || lower.includes('toomanyrequests')) {
+    return {
+      title: 'Too many attempts — slow down',
+      message:
+        'MetaApi rate-limits broker authentication attempts. Wait a minute before trying again, and make sure the credentials are correct before retrying.',
+      details: raw,
+    };
+  }
+  if (lower.includes('excessive') || lower.includes('e_limit')) {
+    return {
+      title: 'Connection limit reached',
+      message:
+        "You've hit the provisioning limit. Wait a few minutes or disconnect an unused account before adding a new one.",
+      details: raw,
+    };
+  }
+  if (lower.includes('network') || lower.includes('fetch failed') || lower.includes('failed to fetch')) {
+    return {
+      title: 'Network error',
+      message: "Couldn't reach the server. Check your connection and try again.",
+      details: raw,
+    };
+  }
+  return { ...fallback, message: raw.length < 200 ? raw : fallback.message };
+}
+
 // Modal dialog for connecting a new MT4 / MT5 account via MetaApi.
 // Renders as a fixed-position overlay; parent controls open/close via `open`.
 export default function ConnectBrokerDialog({ open, onClose, onConnected }) {
@@ -25,7 +82,8 @@ export default function ConnectBrokerDialog({ open, onClose, onConnected }) {
   const [investorPassword, setInvestorPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(''); // can be string OR { title, message, details }
+  const [showErrorDetails, setShowErrorDetails] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -50,6 +108,7 @@ export default function ConnectBrokerDialog({ open, onClose, onConnected }) {
       setShowPassword(false);
       setSubmitting(false);
       setError('');
+      setShowErrorDetails(false);
       setFieldErrors({});
       setShowSuccess(false);
       setSelectedBroker('');
@@ -160,6 +219,7 @@ export default function ConnectBrokerDialog({ open, onClose, onConnected }) {
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
+    setShowErrorDetails(false);
 
     const errs = {};
     if (!nickname.trim()) errs.nickname = 'Required';
@@ -168,7 +228,7 @@ export default function ConnectBrokerDialog({ open, onClose, onConnected }) {
     if (!investorPassword) errs.password = 'Required';
     setFieldErrors(errs);
     if (Object.keys(errs).length > 0) {
-      setError('Please fill in all required fields.');
+      setError({ title: 'Missing fields', message: 'Fill in all required fields before connecting.', details: '' });
       return;
     }
 
@@ -188,7 +248,7 @@ export default function ConnectBrokerDialog({ open, onClose, onConnected }) {
         onClose?.();
       }, 450);
     } catch (err) {
-      setError(err.message || 'Failed to connect broker.');
+      setError(friendlyConnectError(err?.message || String(err)));
       setSubmitting(false);
     }
   }
@@ -459,10 +519,44 @@ export default function ConnectBrokerDialog({ open, onClose, onConnected }) {
             </p>
           </div>
 
-          {/* Error */}
-          {error && (
-            <div className="bg-loss/10 text-loss text-xs rounded-xl px-3.5 py-3" role="alert">{error}</div>
-          )}
+          {/* Error — friendly title + message, raw details collapsible */}
+          {error && (() => {
+            const e = typeof error === 'string'
+              ? { title: 'Something went wrong', message: error, details: '' }
+              : error;
+            return (
+              <div
+                className="rounded-xl bg-loss/10 border border-loss/20 px-4 py-3"
+                role="alert"
+                aria-live="polite"
+              >
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-loss mt-0.5 shrink-0" aria-hidden="true" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-loss">{e.title}</p>
+                    <p className="text-xs text-text-card-muted mt-1 leading-relaxed">{e.message}</p>
+                    {e.details && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setShowErrorDetails((v) => !v)}
+                          className="mt-2 text-[11px] font-medium text-text-card-muted/80 hover:text-text-card underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/40 rounded"
+                          aria-expanded={showErrorDetails}
+                        >
+                          {showErrorDetails ? 'Hide technical details' : 'Show technical details'}
+                        </button>
+                        {showErrorDetails && (
+                          <pre className="mt-2 text-[10px] leading-relaxed text-text-card-muted/70 bg-card-lighter/50 rounded-lg p-2 whitespace-pre-wrap break-words max-h-40 overflow-auto font-mono">
+                            {e.details}
+                          </pre>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Actions */}
           <div className="flex items-center gap-2 pt-1">

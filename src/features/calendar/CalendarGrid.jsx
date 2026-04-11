@@ -8,13 +8,14 @@ import DayModal from './DayModal';
 const WEEKDAYS_FULL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEKDAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-function getProfitBg(profit, maxAbsProfit) {
+function getProfitBg(profit) {
   if (profit === 0) return '';
-  const intensity = Math.min(Math.abs(profit) / (maxAbsProfit || 1), 1);
-  const alpha = 0.1 + intensity * 0.45;
+  // Dual-toned: every profit day is the same subtle orange, every
+  // loss day is the same subtle grey. Magnitude lives in the label,
+  // not the background.
   return profit > 0
-    ? `rgba(74, 222, 128, ${alpha})`
-    : `rgba(248, 113, 113, ${alpha})`;
+    ? 'color-mix(in srgb, var(--color-profit) 16%, transparent)'
+    : 'color-mix(in srgb, var(--color-loss) 16%, transparent)';
 }
 
 export default function DailyCalendar({ trades }) {
@@ -41,10 +42,6 @@ export default function DailyCalendar({ trades }) {
     () => getMonthlyCalendar(trades, year, month - 1),
     [trades, year, month]
   );
-
-  const maxAbsProfit = useMemo(() => {
-    return Math.max(...calendarDays.map((d) => Math.abs(d.profit)), 1);
-  }, [calendarDays]);
 
   const dayMap = useMemo(() => {
     const m = {};
@@ -157,7 +154,7 @@ export default function DailyCalendar({ trades }) {
               const d = day.data;
               const hasProfit = d && d.trades > 0;
               const profit = d?.profit || 0;
-              const bgColor = hasProfit ? getProfitBg(profit, maxAbsProfit) : '';
+              const bgColor = hasProfit ? getProfitBg(profit) : '';
               const profitLabel = hasProfit
                 ? `${format(day.date, 'MMMM d')}: ${profit >= 0 ? 'profit' : 'loss'} of $${Math.abs(profit).toFixed(2)}, ${d.trades} trade${d.trades !== 1 ? 's' : ''}`
                 : `${format(day.date, 'MMMM d')}: no trades`;
@@ -179,7 +176,8 @@ export default function DailyCalendar({ trades }) {
                       {noteDays.has(day.key) && <StickyNote className="w-2 h-2 lg:w-2.5 lg:h-2.5 text-accent-blue" aria-hidden="true" />}
                     </div>
                     <span className={`text-[11px] lg:text-[11px] font-bold leading-none tabular-nums ${profit >= 0 ? 'text-profit' : 'text-loss'}`}>
-                      {profit >= 0 ? '+' : '-'}${Math.abs(profit).toFixed(2)}
+                      <span className="lg:hidden">{profit >= 0 ? '+' : '-'}${Math.abs(profit).toFixed(1)}</span>
+                      <span className="hidden lg:inline">{profit >= 0 ? '+' : '-'}${Math.abs(profit).toFixed(2)}</span>
                     </span>
                     <span className="hidden lg:block text-[10px] text-text-card-muted leading-none tabular-nums">
                       {d.trades} trade{d.trades !== 1 ? 's' : ''}

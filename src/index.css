@@ -19,26 +19,33 @@
 }
 
 @theme {
-  --color-bg: #e8e5df;
-  --color-bg-alt: #dddad4;
-  --color-bg-elevated: #f0ede8;
-  --color-card: #1a1a1a;
-  --color-card-light: #222222;
-  --color-card-lighter: #2c2c2c;
-  --color-card-surface: #161616;
-  --color-text-primary: #1a1a1a;
-  --color-text-secondary: #5a5a52;
-  --color-text-light: #f0f0ec;
-  --color-text-muted: #8a8a80;
-  --color-text-card: #e8e8e4;
-  --color-text-card-muted: #9a9a94;
-  --color-accent-blue: #60a5fa;
-  --color-profit: #4ade80;
-  --color-profit-bg: rgba(74, 222, 128, 0.12);
-  --color-loss: #f87171;
-  --color-loss-bg: rgba(248, 113, 113, 0.12);
-  --color-border: #ccc9c2;
-  --color-border-card: #2e2e2e;
+  /* LIGHT MODE — premium light dashboard.
+   *
+   * The body is a subtle warm neutral. Cards are PURE WHITE so they
+   * clearly "lift" off the body, with strong shadows and hairline
+   * borders for depth. Text is near-black for crisp legibility.
+   * Profit is a rich gold, loss is a deep charcoal — matching the
+   * chart aesthetic without the default green/red. */
+  --color-bg: #ece8df;                /* subtle warm neutral body */
+  --color-bg-alt: #e0dcd2;
+  --color-bg-elevated: #f5f2ea;
+  --color-card: #ffffff;              /* pure white cards */
+  --color-card-light: #f7f5f0;        /* inline/recessed surface */
+  --color-card-lighter: #efece4;      /* deepest inset tone */
+  --color-card-surface: #fafaf7;
+  --color-text-primary: #0a0a0a;      /* near-black headings */
+  --color-text-secondary: #3a3a34;
+  --color-text-light: #0a0a0a;        /* text on white cards */
+  --color-text-muted: #6b6b62;
+  --color-text-card: #1a1a18;         /* card body text */
+  --color-text-card-muted: #6b6b62;   /* card body muted */
+  --color-accent-blue: #2563eb;
+  --color-profit: #b8691a;            /* refined burnt-gold on white */
+  --color-profit-bg: rgba(184, 105, 26, 0.10);
+  --color-loss: #3a3a3a;              /* deep charcoal */
+  --color-loss-bg: rgba(58, 58, 58, 0.08);
+  --color-border: #d4cfc4;
+  --color-border-card: #e8e4d8;       /* hairline on white cards */
   --color-border-subtle: rgba(0, 0, 0, 0.06);
 }
 
@@ -52,6 +59,10 @@
  * dark — only body-level tokens flip.
  * ---------------------------------------------------------------- */
 [data-theme="dark"] {
+  /* DARK MODE — near-black body with slightly elevated dark cards.
+   * All card-interior text tokens flip back to light. Bull lifts
+   * to a brighter gold and bear becomes a cool light grey so both
+   * stay legible against the dark surfaces. */
   --color-bg: #0a0a0a;
   --color-bg-alt: #141414;
   --color-bg-elevated: #1a1a1a;
@@ -61,8 +72,17 @@
   --color-card-surface: #101010;
   --color-text-primary: #f0f0ec;
   --color-text-secondary: #a0a099;
+  --color-text-light: #f0f0ec;
   --color-text-muted: #6a6a64;
+  --color-text-card: #e8e8e4;
+  --color-text-card-muted: #9a9a94;
+  --color-accent-blue: #60a5fa;
+  --color-profit: #e8a04a;
+  --color-profit-bg: rgba(232, 160, 74, 0.16);
+  --color-loss: #8a8a84;
+  --color-loss-bg: rgba(138, 138, 132, 0.18);
   --color-border: #2a2a2a;
+  --color-border-card: #2e2e2e;
   --color-border-subtle: rgba(255, 255, 255, 0.06);
 }
 
@@ -155,33 +175,51 @@ body {
  * noisy. Real content colour still does the communicative work.
  * ---------------------------------------------------------------- */
 .card-premium {
-  background-image: radial-gradient(120% 80% at 85% -10%, rgba(255, 255, 255, 0.025) 0%, transparent 55%);
+  /* LIGHT mode default — layered drop shadow so pure-white cards
+   * lift crisply off the warm-neutral body. Subtle hairline border
+   * ties the edge. Hover adds a tiny amount of elevation. */
+  background-image: radial-gradient(120% 80% at 85% -10%, rgba(0, 0, 0, 0.015) 0%, transparent 60%);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 10px 30px -14px rgba(0, 0, 0, 0.35);
+    inset 0 0 0 1px rgba(15, 10, 0, 0.06),
+    0 1px 0 0 rgba(255, 255, 255, 0.8),
+    0 2px 4px -1px rgba(40, 25, 0, 0.05),
+    0 12px 28px -14px rgba(40, 25, 0, 0.18);
   transition: box-shadow 220ms ease, transform 220ms ease;
 }
 
 .card-premium:hover {
   box-shadow:
+    inset 0 0 0 1px rgba(15, 10, 0, 0.08),
+    0 1px 0 0 rgba(255, 255, 255, 0.9),
+    0 4px 8px -2px rgba(40, 25, 0, 0.08),
+    0 18px 36px -16px rgba(40, 25, 0, 0.24);
+}
+
+/* Dark-mode overrides — light inner stroke + deeper drop shadow. */
+[data-theme="dark"] .card-premium {
+  background-image: radial-gradient(120% 80% at 85% -10%, rgba(255, 255, 255, 0.025) 0%, transparent 55%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 10px 30px -14px rgba(0, 0, 0, 0.35);
+}
+[data-theme="dark"] .card-premium:hover {
+  box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.06),
     0 16px 40px -16px rgba(0, 0, 0, 0.45);
 }
 
-/* In light mode the body sits on cream, so the hairline and shadow
- * need to be darker (borders on light backgrounds) rather than
- * lighter. These overrides keep the same visual weight. */
-:root:not([data-theme="dark"]) .card-premium {
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 10px 28px -16px rgba(0, 0, 0, 0.22);
-}
-
+/* Tint variants — ambient radial glow in the bull/bear accent. */
 .card-premium-profit {
-  background-image: radial-gradient(120% 80% at 85% -10%, rgba(74, 222, 128, 0.08) 0%, transparent 55%);
+  background-image: radial-gradient(120% 80% at 85% -10%, rgba(201, 119, 31, 0.10) 0%, transparent 55%);
 }
 .card-premium-loss {
-  background-image: radial-gradient(120% 80% at 85% -10%, rgba(248, 113, 113, 0.08) 0%, transparent 55%);
+  background-image: radial-gradient(120% 80% at 85% -10%, rgba(63, 63, 63, 0.08) 0%, transparent 55%);
+}
+[data-theme="dark"] .card-premium-profit {
+  background-image: radial-gradient(120% 80% at 85% -10%, rgba(232, 160, 74, 0.12) 0%, transparent 55%);
+}
+[data-theme="dark"] .card-premium-loss {
+  background-image: radial-gradient(120% 80% at 85% -10%, rgba(138, 138, 132, 0.14) 0%, transparent 55%);
 }
 .card-premium-blue {
   background-image: radial-gradient(120% 80% at 85% -10%, rgba(96, 165, 250, 0.07) 0%, transparent 55%);
