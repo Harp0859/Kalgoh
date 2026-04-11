@@ -1,7 +1,9 @@
-import { useState, useMemo, useEffect } from 'react';
-import { format, endOfWeek, eachWeekOfInterval, startOfMonth, endOfMonth } from 'date-fns';
-import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Calendar, BarChart3, StickyNote } from 'lucide-react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { format, startOfMonth, endOfMonth, eachWeekOfInterval } from 'date-fns';
+import { toPng } from 'html-to-image';
+import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Calendar, BarChart3, StickyNote, Download, DollarSign, Percent } from 'lucide-react';
 import { getMonthlyCalendar, getAvailableMonths, getTradesForDate } from '../../utils/tradeStats';
+import { dateKeyUTC } from '../../utils/dateFormat';
 import { getAllNotes } from '../../db/database';
 import DayModal from './DayModal';
 
@@ -18,11 +20,18 @@ function getProfitBg(profit) {
     : 'color-mix(in srgb, var(--color-loss) 16%, transparent)';
 }
 
-export default function DailyCalendar({ trades }) {
+export default function DailyCalendar({ trades, allTrades, startingBalance = 0, balanceOps = [] }) {
   const months = useMemo(() => getAvailableMonths(trades), [trades]);
   const [monthIdx, setMonthIdx] = useState(() => months.length > 0 ? months.length - 1 : 0);
   const [selectedDay, setSelectedDay] = useState(null);
   const [noteDays, setNoteDays] = useState(new Set());
+  // Toggle between dollar and percentage view. Percentage = day P/L
+  // divided by the day's starting balance (running balance BEFORE the
+  // day's trades are applied), so a $3 gain on $100 is 3%, and then a
+  // $30 gain on $300 is 10% even after deposits.
+  const [viewMode, setViewMode] = useState('amount'); // 'amount' | 'percent'
+  const [downloading, setDownloading] = useState(false);
+  const captureRef = useRef(null);
 
   useEffect(() => {
     getAllNotes()
@@ -83,8 +92,145 @@ export default function DailyCalendar({ trades }) {
   const tradingDays = calendarDays.filter((d) => d.trades > 0).length;
   const winDays = calendarDays.filter((d) => d.profit > 0).length;
 
+  // Map of dateKey -> starting balance for that day (balance BEFORE
+  // the day's trades + deposits are applied). Built by replaying ALL
+  // historical trades and balance ops up to, but not including, each
+  // day. `allTrades` is the full filtered-by-account set so we don't
+  // only see the currently-viewed month.
+  const dayStartBalance = useMemo(() => {
+    const out = {};
+    if (!allTrades || allTrades.length === 0) return out;
+
+    // Build a daily delta map combining trades + balance ops so we can
+    // replay chronologically without sorting every trade individually.
+    const deltas = {}; // { dateKey: { tradeProfit, balanceOp } }
+    for (const t of allTrades) {
+      const key = dateKeyUTC(t.closeTime || t.openTime);
+      if (!key) continue;
+      if (!deltas[key]) deltas[key] = { tradeProfit: 0, balanceOp: 0 };
+      deltas[key].tradeProfit += t.profit || 0;
+    }
+    // Skip the first balance op per account (that's the initial deposit
+    // which is already represented by startingBalance).
+    const seenFirst = {};
+    for (const op of balanceOps || []) {
+      if (!op.time) continue;
+      const acct = op.account || '_default';
+      if (!seenFirst[acct]) { seenFirst[acct] = true; continue; }
+      const key = dateKeyUTC(op.time) || op.time.slice(0, 10);
+      if (!deltas[key]) deltas[key] = { tradeProfit: 0, balanceOp: 0 };
+      deltas[key].balanceOp += op.amount || 0;
+    }
+
+    const sortedKeys = Object.keys(deltas).sort();
+    let running = Number(startingBalance) || 0;
+    for (const k of sortedKeys) {
+      out[k] = running; // balance BEFORE this day's activity
+      running += deltas[k].tradeProfit + deltas[k].balanceOp;
+    }
+    return out;
+  }, [allTrades, balanceOps, startingBalance]);
+
+  // Can we actually render percentages? Only if we have a meaningful
+  // starting balance or running balance series.
+  const canShowPercent = Number(startingBalance) > 0 || Object.values(dayStartBalance).some((b) => b > 0);
+
+  // Format a day's P/L as either $X.XX or X.X%, depending on the
+  // active view mode. Returns the string already signed.
+  const formatDayValue = (profit, dateKey, mobile = false) => {
+    if (viewMode === 'percent' && canShowPercent) {
+      const base = dayStartBalance[dateKey] || Number(startingBalance) || 0;
+      if (base <= 0.01) return '—';
+      const pct = (profit / base) * 100;
+      const abs = Math.abs(pct);
+      const s = abs < 10 ? abs.toFixed(1) : abs.toFixed(0);
+      return `${pct >= 0 ? '+' : '-'}${s}%`;
+    }
+    const abs = Math.abs(profit);
+    const s = mobile ? abs.toFixed(1) : abs.toFixed(2);
+    return `${profit >= 0 ? '+' : '-'}$${s}`;
+  };
+
+  async function downloadImage() {
+    if (!captureRef.current || downloading) return;
+    setDownloading(true);
+    try {
+      const dataUrl = await toPng(captureRef.current, {
+        pixelRatio: 2,
+        cacheBust: true,
+        // Match the page body colour so transparent edges blend.
+        backgroundColor:
+          getComputedStyle(document.documentElement).getPropertyValue('--color-bg')?.trim() || '#0a0a0a',
+      });
+      const link = document.createElement('a');
+      link.download = `kalgoh-calendar-${year}-${String(month).padStart(2, '0')}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (e) {
+      console.error('Calendar export failed:', e);
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <div>
+      {/* Toolbar — $/% toggle + Save as image.
+       *  Lives outside the capture ref so it doesn't appear in the
+       *  downloaded PNG. */}
+      <div className="flex items-center justify-between gap-2 mb-4 lg:mb-5">
+        {canShowPercent ? (
+          <div
+            role="radiogroup"
+            aria-label="Value display mode"
+            className="inline-flex items-center gap-1 bg-card-lighter rounded-xl p-1"
+          >
+            <button
+              type="button"
+              role="radio"
+              aria-checked={viewMode === 'amount'}
+              onClick={() => setViewMode('amount')}
+              className={`min-h-[36px] flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 ${
+                viewMode === 'amount'
+                  ? 'bg-card text-text-light shadow-sm shadow-black/20'
+                  : 'text-text-card-muted hover:text-text-light'
+              }`}
+            >
+              <DollarSign className="w-3.5 h-3.5" aria-hidden="true" />
+              Amount
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={viewMode === 'percent'}
+              onClick={() => setViewMode('percent')}
+              className={`min-h-[36px] flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 ${
+                viewMode === 'percent'
+                  ? 'bg-card text-text-light shadow-sm shadow-black/20'
+                  : 'text-text-card-muted hover:text-text-light'
+              }`}
+            >
+              <Percent className="w-3.5 h-3.5" aria-hidden="true" />
+              Percent
+            </button>
+          </div>
+        ) : (
+          <div />
+        )}
+        <button
+          type="button"
+          onClick={downloadImage}
+          disabled={downloading}
+          aria-label="Save calendar as image"
+          className="min-h-[36px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-text-card-muted hover:text-text-light bg-card-lighter hover:bg-card-light transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 disabled:opacity-50"
+        >
+          <Download className="w-3.5 h-3.5" aria-hidden="true" />
+          {downloading ? 'Saving…' : 'Save as image'}
+        </button>
+      </div>
+
+      {/* Everything from here down is captured when saving as image. */}
+      <div ref={captureRef}>
       {/* Month navigation */}
       <div className="flex items-center justify-between mb-6 lg:mb-8">
         <button
@@ -190,8 +336,8 @@ export default function DailyCalendar({ trades }) {
                       {noteDays.has(day.key) && <StickyNote className="w-2 h-2 lg:w-2.5 lg:h-2.5 text-accent-blue" aria-hidden="true" />}
                     </div>
                     <span className={`text-[11px] lg:text-[11px] font-bold leading-none tabular-nums ${profit >= 0 ? 'text-profit' : 'text-loss'}`}>
-                      <span className="lg:hidden">{profit >= 0 ? '+' : '-'}${Math.abs(profit).toFixed(1)}</span>
-                      <span className="hidden lg:inline">{profit >= 0 ? '+' : '-'}${Math.abs(profit).toFixed(2)}</span>
+                      <span className="lg:hidden">{formatDayValue(profit, day.key, true)}</span>
+                      <span className="hidden lg:inline">{formatDayValue(profit, day.key, false)}</span>
                     </span>
                     <span className="hidden lg:block text-[10px] text-text-card-muted leading-none tabular-nums">
                       {d.trades} trade{d.trades !== 1 ? 's' : ''}
@@ -268,6 +414,8 @@ export default function DailyCalendar({ trades }) {
           </div>
         );
       })()}
+
+      </div>{/* end captureRef */}
 
       {/* Day detail modal */}
       {selectedDay && (

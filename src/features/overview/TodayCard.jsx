@@ -55,32 +55,54 @@ export default function TodayCard({ trades }) {
   const cardRef = useRef(null);
   const exportRef = useRef(null);
 
-  // "Today" = latest trading day in UTC (matches server time).
-  // If there are no trades today, fall back to the most recent trading day so
-  // the card isn't empty on weekends / after market close.
-  const latestTradeDate = useMemo(() => {
-    if (!trades || trades.length === 0) return null;
-    const sorted = [...trades].filter((t) => t.closeTime).sort((a, b) =>
-      (b.closeTime || '').localeCompare(a.closeTime || ''),
-    );
-    return sorted[0]?.closeTime || null;
+  // How many distinct trading days are in the filtered set?
+  // 0 or 1 → single-day mode (the classic "today" card)
+  // 2+    → range mode (aggregate across the whole filter window)
+  const { uniqueDayKeys, latestTradeDate } = useMemo(() => {
+    if (!trades || trades.length === 0) return { uniqueDayKeys: [], latestTradeDate: null };
+    const keys = new Set();
+    let latest = null;
+    for (const t of trades) {
+      const ts = t.closeTime || t.openTime;
+      if (!ts) continue;
+      const key = dateKeyUTC(ts);
+      if (key) keys.add(key);
+      if (!latest || ts > latest) latest = ts;
+    }
+    return { uniqueDayKeys: [...keys].sort(), latestTradeDate: latest };
   }, [trades]);
 
+  const isRange = uniqueDayKeys.length > 1;
+
+  // Single-day mode: latest trading day we actually have data for.
+  // Range mode: null (we use the full trades array directly below).
   const today = latestTradeDate ? dateKeyUTC(latestTradeDate) : dateKeyUTC(new Date());
-  const todayLabel = today ? formatDateLongUTC(today + 'T00:00:00Z') : '';
+  const realTodayKey = dateKeyUTC(new Date());
+  const isActuallyToday = today === realTodayKey;
 
-  const todayTrades = useMemo(() => getTradesForDate(trades, today), [trades, today]);
+  // Which trades drive the numbers on this card?
+  const cardTrades = useMemo(
+    () => (isRange ? trades : getTradesForDate(trades, today)),
+    [isRange, trades, today],
+  );
 
-  const profit = todayTrades.reduce((s, t) => s + (t.profit || 0), 0);
-  const commission = todayTrades.reduce((s, t) => s + (t.commission || 0), 0);
-  const wins = todayTrades.filter((t) => (t.profit || 0) > 0).length;
-  const losses = todayTrades.filter((t) => (t.profit || 0) < 0).length;
-  const winRate = todayTrades.length > 0 ? (wins / todayTrades.length) * 100 : 0;
-  const bestTrade = todayTrades.length > 0 ? Math.max(...todayTrades.map((t) => t.profit || 0)) : 0;
-  const worstTrade = todayTrades.length > 0 ? Math.min(...todayTrades.map((t) => t.profit || 0)) : 0;
+  // Header label + subtitle depending on mode.
+  const headerLabel = isRange ? 'Range' : isActuallyToday ? 'Today' : 'Latest day';
+  const headerSubtitle = isRange
+    ? `${formatDateLongUTC(uniqueDayKeys[0] + 'T00:00:00Z')} — ${formatDateLongUTC(uniqueDayKeys[uniqueDayKeys.length - 1] + 'T00:00:00Z')}`
+    : formatDateLongUTC(today + 'T00:00:00Z');
+  const todayLabel = headerSubtitle; // kept for download/copy compatibility
+
+  const profit = cardTrades.reduce((s, t) => s + (t.profit || 0), 0);
+  const commission = cardTrades.reduce((s, t) => s + (t.commission || 0), 0);
+  const wins = cardTrades.filter((t) => (t.profit || 0) > 0).length;
+  const losses = cardTrades.filter((t) => (t.profit || 0) < 0).length;
+  const winRate = cardTrades.length > 0 ? (wins / cardTrades.length) * 100 : 0;
+  const bestTrade = cardTrades.length > 0 ? Math.max(...cardTrades.map((t) => t.profit || 0)) : 0;
+  const worstTrade = cardTrades.length > 0 ? Math.min(...cardTrades.map((t) => t.profit || 0)) : 0;
 
   // Avg hold time
-  const durations = todayTrades.map((t) => {
+  const durations = cardTrades.map((t) => {
     try {
       const open = parseISO(t.openTime);
       const close = parseISO(t.closeTime);
@@ -93,7 +115,22 @@ export default function TodayCard({ trades }) {
   const bestPositive = bestTrade >= 0;
   const worstPositive = worstTrade >= 0; // true = no losing trades
 
-  if (todayTrades.length === 0) return null;
+  // In range mode, "W/L" is days won / lost, not trades won / lost.
+  const dayBuckets = useMemo(() => {
+    if (!isRange) return null;
+    const byDay = {};
+    for (const t of cardTrades) {
+      const k = dateKeyUTC(t.closeTime || t.openTime);
+      if (!k) continue;
+      byDay[k] = (byDay[k] || 0) + (t.profit || 0);
+    }
+    return byDay;
+  }, [isRange, cardTrades]);
+  const winDays = dayBuckets ? Object.values(dayBuckets).filter((p) => p > 0).length : 0;
+  const lossDays = dayBuckets ? Object.values(dayBuckets).filter((p) => p < 0).length : 0;
+  const totalDays = dayBuckets ? Object.keys(dayBuckets).length : 0;
+
+  if (cardTrades.length === 0) return null;
 
   // Format a single trade's P/L with sign + currency
   const signed = (n) => `${n >= 0 ? '+' : '-'}$${fmtMoney(Math.abs(n))}`;
@@ -122,7 +159,7 @@ export default function TodayCard({ trades }) {
     const text = [
       `${todayLabel}`,
       `P/L: ${signed(profit)}`,
-      `Trades: ${todayTrades.length} (${wins}W/${losses}L)`,
+      `Trades: ${cardTrades.length} (${wins}W/${losses}L)`,
       `Win Rate: ${winRate.toFixed(0)}%`,
       `Best: ${signed(bestTrade)} | Worst: ${signed(worstTrade)}`,
       ``,
@@ -131,7 +168,7 @@ export default function TodayCard({ trades }) {
     navigator.clipboard.writeText(text);
   }
 
-  const tradeWord = todayTrades.length === 1 ? 'trade' : 'trades';
+  const tradeWord = cardTrades.length === 1 ? 'trade' : 'trades';
   const accent = isPositive ? 'rgba(74,222,128,0.10)' : 'rgba(248,113,113,0.10)';
 
   return (
@@ -140,7 +177,7 @@ export default function TodayCard({ trades }) {
       <div
         ref={cardRef}
         className="relative overflow-hidden rounded-2xl lg:rounded-3xl bg-card shadow-xl shadow-black/20"
-        aria-label={`Today's trading summary: ${isPositive ? 'profit' : 'loss'} of $${fmtMoney(Math.abs(profit))} across ${todayTrades.length} ${tradeWord}`}
+        aria-label={`Today's trading summary: ${isPositive ? 'profit' : 'loss'} of $${fmtMoney(Math.abs(profit))} across ${cardTrades.length} ${tradeWord}`}
       >
         {/* Ambient glow tinted by P/L — soft, single-source light */}
         <div
@@ -161,7 +198,7 @@ export default function TodayCard({ trades }) {
                 aria-hidden="true"
                 className={`w-1.5 h-1.5 rounded-full ${isPositive ? 'bg-profit' : 'bg-loss'} shadow-[0_0_12px_currentColor] ${isPositive ? 'text-profit' : 'text-loss'}`}
               />
-              <p className="text-[11px] uppercase tracking-[0.16em] font-semibold text-text-card-muted">Today</p>
+              <p className="text-[11px] uppercase tracking-[0.16em] font-semibold text-text-card-muted">{headerLabel}</p>
               <span aria-hidden="true" className="text-text-card-muted/40">·</span>
               <p className="text-[11px] text-text-card-muted tabular-nums truncate">{todayLabel}</p>
             </div>
@@ -176,7 +213,7 @@ export default function TodayCard({ trades }) {
               {isPositive ? '+' : '-'}${fmtMoney(Math.abs(profit))}
             </p>
             <p className="mt-3 text-xs lg:text-sm text-text-card-muted tabular-nums">
-              <span className="text-text-card">{todayTrades.length}</span> {tradeWord}
+              <span className="text-text-card">{cardTrades.length}</span> {tradeWord}
               <span aria-hidden="true" className="mx-1.5 text-text-card-muted/40">·</span>
               <span className={`font-semibold ${winRate >= 50 ? 'text-profit' : 'text-loss'}`}>
                 {winRate.toFixed(0)}%
@@ -197,12 +234,23 @@ export default function TodayCard({ trades }) {
             className="mt-7 lg:mt-9 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent"
           />
 
-          {/* Secondary stats — inline, labels above, quiet dividers */}
+          {/* Secondary stats — inline, labels above, quiet dividers.
+              In range mode W/L counts profitable vs losing DAYS, not trades. */}
           <dl className="mt-5 lg:mt-6 grid grid-cols-3 gap-4 lg:gap-6">
             <div>
-              <dt className="text-[10px] uppercase tracking-[0.14em] font-medium text-text-card-muted/80">W / L</dt>
+              <dt className="text-[10px] uppercase tracking-[0.14em] font-medium text-text-card-muted/80">
+                {isRange ? 'Win days' : 'W / L'}
+              </dt>
               <dd className="mt-1.5 text-base lg:text-lg font-semibold tabular-nums text-text-light">
-                {wins}<span className="text-text-card-muted/50 font-normal mx-0.5">/</span>{losses}
+                {isRange ? (
+                  <>
+                    {winDays}<span className="text-text-card-muted/50 font-normal mx-0.5">/</span>{totalDays}
+                  </>
+                ) : (
+                  <>
+                    {wins}<span className="text-text-card-muted/50 font-normal mx-0.5">/</span>{losses}
+                  </>
+                )}
               </dd>
             </div>
             <div className="relative pl-4 lg:pl-6">
@@ -305,7 +353,7 @@ export default function TodayCard({ trades }) {
                     color: '#9a9a94',
                   }}
                 >
-                  Today
+                  {headerLabel}
                 </span>
                 <span style={{ color: '#5a5a54', fontSize: '12px' }}>·</span>
                 <span style={{ fontSize: '13px', color: '#c0c0b8' }}>{todayLabel}</span>
@@ -326,7 +374,7 @@ export default function TodayCard({ trades }) {
                 {isPositive ? '+' : '-'}${fmtMoney(Math.abs(profit))}
               </div>
               <div style={{ marginTop: '16px', fontSize: '15px', color: '#9a9a94' }}>
-                <span style={{ color: '#e8e8e4' }}>{todayTrades.length}</span> {tradeWord}
+                <span style={{ color: '#e8e8e4' }}>{cardTrades.length}</span> {tradeWord}
                 <span style={{ margin: '0 10px', color: '#5a5a54' }}>·</span>
                 <span
                   style={{

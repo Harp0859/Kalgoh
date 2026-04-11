@@ -19,8 +19,8 @@ export default function TopBar({ title, subtitle, hasTrades, tab, accounts, sele
       <div
         className="lg:hidden fixed top-0 inset-x-0 z-30 px-4 pb-3
           pt-[calc(env(safe-area-inset-top)+0.75rem)]
-          bg-bg/85 backdrop-blur-xl backdrop-saturate-150
-          border-b border-white/[0.04]
+          bg-bg
+          border-b border-border-subtle
           flex items-center justify-between"
       >
         <button

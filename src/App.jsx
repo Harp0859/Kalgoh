@@ -222,7 +222,12 @@ function AuthenticatedApp({ user, signOut, changeEmail }) {
           {tab === 'calendar' && hasTrades && (
             <div className="card-premium bg-card rounded-2xl lg:rounded-3xl p-4 lg:p-8">
               {hasFiltered ? (
-                <CalendarGrid trades={filteredTrades} />
+                <CalendarGrid
+                  trades={filteredTrades}
+                  allTrades={accountTrades}
+                  startingBalance={startingBalance}
+                  balanceOps={balanceOps}
+                />
               ) : <EmptyState message="No trades for this filter." dark />}
             </div>
           )}
