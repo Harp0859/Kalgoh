@@ -242,16 +242,20 @@ export default function TodayCard({ trades, allTrades, startingBalance = 0, bala
         <div aria-hidden="true" className="absolute inset-0 rounded-2xl lg:rounded-3xl ring-1 ring-inset ring-white/[0.04] pointer-events-none" />
 
         <div className="relative p-5 lg:p-7">
-          {/* Header — quiet label row */}
-          <div className="flex items-center justify-between">
+          {/* Header — quiet label row.
+           *  Mobile: dot + label + date (truncated) | toggle
+           *  Desktop: dot + label + date | toggle + Kalgoh brand
+           *  The "Kalgoh" brand mark is desktop-only so the mobile
+           *  row isn't fighting the date label for space. */}
+          <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <span
                 aria-hidden="true"
-                className={`w-1.5 h-1.5 rounded-full ${isPositive ? 'bg-profit' : 'bg-loss'} shadow-[0_0_12px_currentColor] ${isPositive ? 'text-profit' : 'text-loss'}`}
+                className={`w-1.5 h-1.5 rounded-full shrink-0 ${isPositive ? 'bg-profit' : 'bg-loss'} shadow-[0_0_12px_currentColor] ${isPositive ? 'text-profit' : 'text-loss'}`}
               />
-              <p className="text-[11px] uppercase tracking-[0.16em] font-semibold text-text-card-muted">{headerLabel}</p>
-              <span aria-hidden="true" className="text-text-card-muted/40">·</span>
-              <p className="text-[11px] text-text-card-muted tabular-nums truncate">{todayLabel}</p>
+              <p className="text-[11px] uppercase tracking-[0.16em] font-semibold text-text-card-muted whitespace-nowrap">{headerLabel}</p>
+              <span aria-hidden="true" className="text-text-card-muted/40 shrink-0">·</span>
+              <p className="text-[11px] text-text-card-muted tabular-nums truncate min-w-0">{todayLabel}</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {canShowPercent && (
@@ -292,7 +296,7 @@ export default function TodayCard({ trades, allTrades, startingBalance = 0, bala
                   </button>
                 </div>
               )}
-              <span className="text-[10px] uppercase tracking-[0.22em] font-semibold text-text-card-muted/35">Kalgoh</span>
+              <span className="hidden lg:inline text-[10px] uppercase tracking-[0.22em] font-semibold text-text-card-muted/35">Kalgoh</span>
             </div>
           </div>
 
