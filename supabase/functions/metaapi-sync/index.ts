@@ -62,10 +62,19 @@ Deno.serve(async (req) => {
   });
 
   // Determine which connections to sync.
+  //
+  // For cron mode we only touch 'active' connections — we don't want
+  // the scheduler hammering MetaApi for broken ones every 10 minutes.
+  //
+  // For user-triggered single-connection sync ("Sync now" button) we
+  // deliberately DO NOT filter by status. The user is explicitly asking
+  // to retry, and stuck-in-error accounts are the main case where they
+  // need to — if we filter them out, errored connections can never
+  // self-heal even after the underlying issue (bad password, slow
+  // MetaApi deploy, network blip) is resolved.
   let connectionsQuery = admin
     .from('broker_connections')
-    .select('*')
-    .eq('status', 'active');
+    .select('*');
 
   if (body?.connectionId) {
     // Single-connection sync: must be authenticated as the owning user
@@ -84,14 +93,15 @@ Deno.serve(async (req) => {
     connectionsQuery = connectionsQuery
       .eq('id', body.connectionId)
       .eq('user_id', userData.user.id);
+    // No status filter — let the user retry whatever state it's in.
   } else {
-    // Cron-mode: require the shared service JWT (Supabase automatically does
-    // this when invoked with the Authorization: Bearer <service_role> header
-    // set via pg_net, but we also verify the caller isn't anonymous).
+    // Cron-mode: require the shared service JWT and only pick up
+    // healthy connections.
     const authHeader = req.headers.get('Authorization') || '';
     if (!authHeader.includes(serviceKey)) {
       return json({ error: 'forbidden' }, 403);
     }
+    connectionsQuery = connectionsQuery.eq('status', 'active');
   }
 
   const { data: connections, error: connErr } = await connectionsQuery;

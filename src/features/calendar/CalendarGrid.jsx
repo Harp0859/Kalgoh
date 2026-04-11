@@ -127,16 +127,24 @@ export default function DailyCalendar({ trades }) {
         </button>
       </div>
 
-      {/* Header row — short labels on mobile, full on desktop */}
-      {/* Mobile: 7 cols only | Desktop: 7 cols + weekly */}
-      <div className="grid grid-cols-7 lg:grid-cols-[repeat(7,1fr)_120px] gap-1 lg:gap-2 mb-1 lg:mb-2">
-        {WEEKDAYS_FULL.map((day, i) => (
-          <div key={day} className="text-center text-[10px] font-medium text-text-card-muted uppercase tracking-widest py-1">
-            <span className="lg:hidden" aria-hidden="true">{WEEKDAYS_SHORT[i]}</span>
-            <span className="hidden lg:inline">{day}</span>
-            <span className="sr-only lg:hidden">{day}</span>
-          </div>
-        ))}
+      {/* Header row — Mon-Fri on mobile (markets closed on weekends),
+       *  full Sun-Sat + weekly column on desktop. */}
+      <div className="grid grid-cols-5 lg:grid-cols-[repeat(7,1fr)_120px] gap-1 lg:gap-2 mb-1 lg:mb-2">
+        {WEEKDAYS_FULL.map((day, i) => {
+          const isWeekend = i === 0 || i === 6;
+          return (
+            <div
+              key={day}
+              className={`text-center text-[10px] font-medium text-text-card-muted uppercase tracking-widest py-1 ${
+                isWeekend ? 'hidden lg:block' : ''
+              }`}
+            >
+              <span className="lg:hidden" aria-hidden="true">{WEEKDAYS_SHORT[i]}</span>
+              <span className="hidden lg:inline">{day}</span>
+              <span className="sr-only lg:hidden">{day}</span>
+            </div>
+          );
+        })}
         <div className="hidden lg:block text-center text-[10px] font-medium text-text-card-muted uppercase tracking-widest py-1 border-l border-border-card ml-1 pl-1">
           Weekly
         </div>
@@ -145,10 +153,16 @@ export default function DailyCalendar({ trades }) {
       {/* Weeks */}
       <div className="space-y-1 lg:space-y-2">
         {weeklyData.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-7 lg:grid-cols-[repeat(7,1fr)_120px] gap-1 lg:gap-2 items-stretch">
+          <div key={wi} className="grid grid-cols-5 lg:grid-cols-[repeat(7,1fr)_120px] gap-1 lg:gap-2 items-stretch">
             {week.days.map((day) => {
+              // Hide Sun/Sat cells on mobile — markets are closed,
+              // so weekend columns would always be empty clutter.
+              const dow = day.date.getDay();
+              const isWeekend = dow === 0 || dow === 6;
+              const weekendHidden = isWeekend ? 'hidden lg:flex' : '';
+
               if (!day.inMonth) {
-                return <div key={day.key} className="min-h-[44px] h-14 lg:h-20 rounded-lg lg:rounded-xl" />;
+                return <div key={day.key} className={`${weekendHidden} min-h-[44px] h-14 lg:h-20 rounded-lg lg:rounded-xl`} />;
               }
 
               const d = day.data;
@@ -165,7 +179,7 @@ export default function DailyCalendar({ trades }) {
                     type="button"
                     key={day.key}
                     aria-label={profitLabel}
-                    className="min-h-[44px] h-14 lg:h-20 rounded-lg lg:rounded-xl flex flex-col items-center justify-center gap-0 lg:gap-0.5 cursor-pointer hover:ring-1 hover:ring-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 transition-all"
+                    className={`${isWeekend ? 'hidden lg:flex' : 'flex'} min-h-[44px] h-14 lg:h-20 rounded-lg lg:rounded-xl flex-col items-center justify-center gap-0 lg:gap-0.5 cursor-pointer hover:ring-1 hover:ring-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 transition-all`}
                     onClick={() => setSelectedDay(day.key)}
                     style={{ backgroundColor: bgColor }}
                   >
@@ -190,7 +204,7 @@ export default function DailyCalendar({ trades }) {
                 <div
                   key={day.key}
                   aria-label={profitLabel}
-                  className="min-h-[44px] h-14 lg:h-20 rounded-lg lg:rounded-xl flex flex-col items-center justify-center gap-0 lg:gap-0.5 opacity-25"
+                  className={`${isWeekend ? 'hidden lg:flex' : 'flex'} min-h-[44px] h-14 lg:h-20 rounded-lg lg:rounded-xl flex-col items-center justify-center gap-0 lg:gap-0.5 opacity-25`}
                 >
                   <div className="flex items-center gap-0.5">
                     <span className="text-xs font-medium text-text-card-muted tabular-nums">

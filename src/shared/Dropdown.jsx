@@ -75,13 +75,13 @@ export default function Dropdown({ value, onChange, options, icon: Icon, placeho
         aria-label={ariaLabel || (selected?.label ? `${placeholder}: ${selected.label}` : placeholder)}
         onClick={() => setOpen(!open)}
         onKeyDown={handleKeyDown}
-        className="min-h-[44px] flex items-center gap-2 px-3.5 py-3 rounded-xl bg-bg-alt border border-border-subtle hover:border-border transition-colors duration-150 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+        className="min-h-[44px] min-w-[44px] flex items-center justify-center gap-0 lg:gap-2 px-0 lg:px-3.5 py-3 rounded-xl bg-bg-alt border border-border-subtle hover:border-border transition-colors duration-150 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
       >
         {Icon && <Icon className="w-4 h-4 text-text-secondary" aria-hidden="true" />}
-        <span className="text-sm text-text-primary font-medium">
+        <span className="hidden lg:inline text-sm text-text-primary font-medium">
           {selected?.label || placeholder}
         </span>
-        <ChevronDown className={`w-4 h-4 text-text-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+        <ChevronDown className={`hidden lg:block w-4 h-4 text-text-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
       </button>
 
       {open && (
