@@ -19,34 +19,45 @@
 }
 
 @theme {
-  /* LIGHT MODE — premium light dashboard.
+  /* LIGHT MODE — premium editorial aesthetic.
    *
-   * The body is a subtle warm neutral. Cards are PURE WHITE so they
-   * clearly "lift" off the body, with strong shadows and hairline
-   * borders for depth. Text is near-black for crisp legibility.
-   * Profit is a rich gold, loss is a deep charcoal — matching the
-   * chart aesthetic without the default green/red. */
-  --color-bg: #ece8df;                /* subtle warm neutral body */
-  --color-bg-alt: #e0dcd2;
-  --color-bg-elevated: #f5f2ea;
-  --color-card: #ffffff;              /* pure white cards */
-  --color-card-light: #f7f5f0;        /* inline/recessed surface */
-  --color-card-lighter: #efece4;      /* deepest inset tone */
-  --color-card-surface: #fafaf7;
-  --color-text-primary: #0a0a0a;      /* near-black headings */
-  --color-text-secondary: #3a3a34;
-  --color-text-light: #0a0a0a;        /* text on white cards */
-  --color-text-muted: #6b6b62;
-  --color-text-card: #1a1a18;         /* card body text */
-  --color-text-card-muted: #6b6b62;   /* card body muted */
-  --color-accent-blue: #2563eb;
-  --color-profit: #b8691a;            /* refined burnt-gold on white */
-  --color-profit-bg: rgba(184, 105, 26, 0.10);
-  --color-loss: #3a3a3a;              /* deep charcoal */
-  --color-loss-bg: rgba(58, 58, 58, 0.08);
-  --color-border: #d4cfc4;
-  --color-border-card: #e8e4d8;       /* hairline on white cards */
-  --color-border-subtle: rgba(0, 0, 0, 0.06);
+   * Design goals, in priority order:
+   *   1. Deep black ink on off-white paper — maximum legibility.
+   *   2. Pure-white cards that lift crisply off a softly-warm body,
+   *      so the card boundary is unmistakable without heavy borders.
+   *   3. A single accent color (burnt gold) used sparingly.
+   *   4. Neutrals trend slightly warm (2–4 pts of red vs blue) so
+   *      the palette never feels clinical. No yellow cast.
+   *
+   * Tuned so it doesn't look like a "dark mode recolour" — this is
+   * its own mode, not a tinted inversion.
+   *
+   * Card-interior tokens (text-light / text-card / text-card-muted)
+   * use DARK values here because the cards are light; they flip to
+   * light values in the dark theme override below. */
+  --color-bg: #f5f3ee;                /* off-white paper, warm neutral */
+  --color-bg-alt: #ebe8e0;             /* recessed surface */
+  --color-bg-elevated: #fbf9f4;        /* raised surface */
+  --color-card: #ffffff;               /* pure white cards, maximum pop */
+  --color-card-light: #f6f3ea;         /* inline hover / recessed fill */
+  --color-card-lighter: #ece8dc;       /* deepest inset tone — visible on white */
+  --color-card-surface: #fdfcf8;       /* elevated sub-surface */
+  --color-text-primary: #0a0a0a;       /* near-black headings */
+  --color-text-secondary: #2a2a26;     /* body copy */
+  --color-text-light: #0a0a0a;         /* text on white cards */
+  --color-text-muted: #5a564c;         /* muted page text — 6.9:1 on bg */
+  --color-text-card: #1a1a16;          /* card body text */
+  --color-text-card-muted: #5a564c;    /* card body muted — 6.9:1 on white */
+  --color-accent-blue: #1e5fd9;        /* strong, confident blue */
+  --color-profit: #a35614;             /* deep burnt amber — 6.5:1 on white */
+  --color-profit-bg: rgba(163, 86, 20, 0.14);
+  --color-loss: #2f4a6b;               /* deep navy-slate — distinct from body text, ~9:1 on white */
+  --color-loss-bg: rgba(47, 74, 107, 0.12);
+  --color-border: #d0caba;             /* visible body border */
+  --color-border-card: #e2ddcb;        /* visible hairline on white cards */
+  --color-border-subtle: rgba(20, 15, 0, 0.08);
+  --color-focus: rgba(30, 95, 217, 0.55);   /* theme-aware focus outline */
+  --color-ring-subtle: rgba(20, 15, 0, 0.10); /* theme-aware inset stroke */
 }
 
 /* ----------------------------------------------------------------
@@ -79,11 +90,13 @@
   --color-accent-blue: #60a5fa;
   --color-profit: #e8a04a;
   --color-profit-bg: rgba(232, 160, 74, 0.16);
-  --color-loss: #8a8a84;
-  --color-loss-bg: rgba(138, 138, 132, 0.18);
+  --color-loss: #7d94b0;               /* cool desat navy — matches light-mode loss family */
+  --color-loss-bg: rgba(125, 148, 176, 0.18);
   --color-border: #2a2a2a;
   --color-border-card: #2e2e2e;
   --color-border-subtle: rgba(255, 255, 255, 0.06);
+  --color-focus: rgba(255, 255, 255, 0.40);
+  --color-ring-subtle: rgba(255, 255, 255, 0.06);
 }
 
 body {
@@ -94,6 +107,28 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+/* ----------------------------------------------------------------
+ * Theme-aware focus ring.
+ *
+ * Many components ship hardcoded `focus-visible:ring-white/20`
+ * classes that were tuned for dark mode and are invisible on a
+ * white card in light mode. This global :focus-visible rule draws a
+ * 2px outline in var(--color-focus) on top of whatever Tailwind ring
+ * the component specified, so keyboard focus is always visible in
+ * both themes without rewriting every component.
+ * ---------------------------------------------------------------- */
+:where(button, a, [role="button"], [role="radio"], [role="switch"],
+       [role="tab"], [role="menuitem"], [role="option"],
+       input, select, textarea, [tabindex="0"]):focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Theme-aware inset stroke — pairs with card surfaces at any zoom. */
+.ring-hairline {
+  box-shadow: inset 0 0 0 1px var(--color-ring-subtle);
 }
 
 /* Skip-to-content link — visually hidden until focused */
@@ -175,24 +210,29 @@ body {
  * noisy. Real content colour still does the communicative work.
  * ---------------------------------------------------------------- */
 .card-premium {
-  /* LIGHT mode default — layered drop shadow so pure-white cards
-   * lift crisply off the warm-neutral body. Subtle hairline border
-   * ties the edge. Hover adds a tiny amount of elevation. */
-  background-image: radial-gradient(120% 80% at 85% -10%, rgba(0, 0, 0, 0.015) 0%, transparent 60%);
+  /* LIGHT mode default — layered shadow tuned for the editorial
+   * feel: a crisp hairline border (for definition at any zoom), a
+   * subtle 1px highlight at the top (glass-edge), a tight contact
+   * shadow (depth close to the card), and a soft ambient shadow
+   * (atmospheric spread). Hover bumps the ambient shadow only so
+   * the card appears to float a little further from the page. */
+  background-image: radial-gradient(120% 80% at 85% -10%, rgba(0, 0, 0, 0.012) 0%, transparent 60%);
   box-shadow:
-    inset 0 0 0 1px rgba(15, 10, 0, 0.06),
-    0 1px 0 0 rgba(255, 255, 255, 0.8),
-    0 2px 4px -1px rgba(40, 25, 0, 0.05),
-    0 12px 28px -14px rgba(40, 25, 0, 0.18);
+    inset 0 0 0 1px rgba(20, 15, 0, 0.07),
+    0 1px 0 0 rgba(255, 255, 255, 0.9),
+    0 1px 2px -1px rgba(50, 35, 10, 0.06),
+    0 3px 8px -3px rgba(50, 35, 10, 0.08),
+    0 14px 32px -16px rgba(50, 35, 10, 0.16);
   transition: box-shadow 220ms ease, transform 220ms ease;
 }
 
 .card-premium:hover {
   box-shadow:
-    inset 0 0 0 1px rgba(15, 10, 0, 0.08),
-    0 1px 0 0 rgba(255, 255, 255, 0.9),
-    0 4px 8px -2px rgba(40, 25, 0, 0.08),
-    0 18px 36px -16px rgba(40, 25, 0, 0.24);
+    inset 0 0 0 1px rgba(20, 15, 0, 0.09),
+    0 1px 0 0 rgba(255, 255, 255, 1),
+    0 2px 4px -1px rgba(50, 35, 10, 0.08),
+    0 6px 14px -4px rgba(50, 35, 10, 0.10),
+    0 22px 44px -20px rgba(50, 35, 10, 0.22);
 }
 
 /* Dark-mode overrides — light inner stroke + deeper drop shadow. */

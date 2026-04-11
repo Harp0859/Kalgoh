@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 
 import { LayoutDashboard, Calendar, Table2, Upload, Settings, BarChart3, X } from 'lucide-react';
 
+import { useTheme } from '../theme/ThemeContext';
+
 const NAV = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
@@ -34,6 +36,8 @@ function NavItem({ id, label, icon: Icon, disabled, active, onSelect }) {
 }
 
 export default function Sidebar({ tab, setTab, hasTrades, mobileOpen, setMobileOpen }) {
+  const { resolved } = useTheme();
+  const logoSrc = resolved === 'light' ? '/kalgoh_white.png' : '/kalgoh-logo.png';
   const drawerRef = useRef(null);
   const closeBtnRef = useRef(null);
   const previouslyFocusedRef = useRef(null);
@@ -114,7 +118,13 @@ export default function Sidebar({ tab, setTab, hasTrades, mobileOpen, setMobileO
         className="hidden lg:flex fixed left-0 top-0 bottom-0 z-30 w-[200px] bg-card flex-col justify-between py-5 pb-safe"
       >
         <div>
-          <div className="px-5 mb-8">
+          <div className="px-5 mb-8 flex items-center gap-2">
+            <img
+              src={logoSrc}
+              alt=""
+              className="h-8 w-auto"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
             <span className="text-2xl font-bold text-text-light tracking-tight">Kalgoh</span>
           </div>
           <nav aria-label="Main" className="flex flex-col gap-1 px-2">
@@ -159,7 +169,15 @@ export default function Sidebar({ tab, setTab, hasTrades, mobileOpen, setMobileO
           >
             <div>
               <div className="px-5 mb-6 flex items-center justify-between">
-                <span className="text-2xl font-bold text-text-light tracking-tight">Kalgoh</span>
+                <div className="flex items-center gap-2">
+                  <img
+                    src="/kalgoh-logo.png"
+                    alt=""
+                    className="h-8 w-auto"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                  <span className="text-2xl font-bold text-text-light tracking-tight">Kalgoh</span>
+                </div>
                 <button
                   ref={closeBtnRef}
                   type="button"

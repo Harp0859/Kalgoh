@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Calendar, BarChart
 import { getMonthlyCalendar, getAvailableMonths, getTradesForDate } from '../../utils/tradeStats';
 import { dateKeyUTC } from '../../utils/dateFormat';
 import { getAllNotes } from '../../db/database';
+import { useTheme } from '../../theme/ThemeContext';
 import DayModal from './DayModal';
 
 const WEEKDAYS_FULL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -12,15 +13,17 @@ const WEEKDAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 function getProfitBg(profit) {
   if (profit === 0) return '';
-  // Dual-toned: every profit day is the same subtle orange, every
-  // loss day is the same subtle grey. Magnitude lives in the label,
-  // not the background.
-  return profit > 0
-    ? 'color-mix(in srgb, var(--color-profit) 16%, transparent)'
-    : 'color-mix(in srgb, var(--color-loss) 16%, transparent)';
+  // Dual-toned: every profit day uses the theme-aware profit-bg
+  // token, every loss day uses the loss-bg token. Magnitude lives
+  // in the label, not the background. Using the explicit bg tokens
+  // (instead of color-mix) means both themes get a tint that was
+  // tuned for their own surface.
+  return profit > 0 ? 'var(--color-profit-bg)' : 'var(--color-loss-bg)';
 }
 
 export default function DailyCalendar({ trades, allTrades, startingBalance = 0, balanceOps = [] }) {
+  const { resolved } = useTheme();
+  const logoSrc = resolved === 'light' ? '/kalgoh_white.png' : '/kalgoh-logo.png';
   const months = useMemo(() => getAvailableMonths(trades), [trades]);
   const [monthIdx, setMonthIdx] = useState(() => months.length > 0 ? months.length - 1 : 0);
   const [selectedDay, setSelectedDay] = useState(null);
@@ -135,6 +138,20 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
   // starting balance or running balance series.
   const canShowPercent = Number(startingBalance) > 0 || Object.values(dayStartBalance).some((b) => b > 0);
 
+  // Compact money formatter — keeps long values fitting inside the
+  // calendar cell at any magnitude. Under $1k shows 1 or 2 decimals
+  // (tight mode uses 1 decimal to save width on mobile). Above $1k
+  // abbreviates to k/M so `+$1234.56` becomes `+$1.2k` and
+  // `+$1234567` becomes `+$1.2M`.
+  const fmtCompactMoney = (amount, tight = false) => {
+    const abs = Math.abs(amount);
+    const sign = amount >= 0 ? '+' : '-';
+    if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`;
+    if (abs >= 10_000)    return `${sign}$${Math.round(abs / 1000)}k`;
+    if (abs >= 1_000)     return `${sign}$${(abs / 1000).toFixed(1)}k`;
+    return `${sign}$${tight ? abs.toFixed(1) : abs.toFixed(2)}`;
+  };
+
   // Format a day's P/L as either $X.XX or X.X%, depending on the
   // active view mode. Returns the string already signed.
   const formatDayValue = (profit, dateKey, mobile = false) => {
@@ -146,9 +163,7 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
       const s = abs < 10 ? abs.toFixed(1) : abs.toFixed(0);
       return `${pct >= 0 ? '+' : '-'}${s}%`;
     }
-    const abs = Math.abs(profit);
-    const s = mobile ? abs.toFixed(1) : abs.toFixed(2);
-    return `${profit >= 0 ? '+' : '-'}$${s}`;
+    return fmtCompactMoney(profit, mobile);
   };
 
   // Convert a $ amount into a signed "X.X%" string relative to a given
@@ -205,132 +220,138 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
   }
 
   return (
-    <div>
-      {/* Toolbar — logo on the left, $/% toggle + Save as image on the right.
-       *  Lives outside the capture ref so it doesn't appear in the
-       *  downloaded PNG. */}
-      <div className="flex items-center justify-between gap-2 mb-4 lg:mb-5">
-        {/* Brand lockup — logo icon + Kalgoh wordmark. Logo lives at
-         *  public/kalgoh-logo.png; wordmark is a text span alongside
-         *  it so there's always a readable brand even if the PNG
-         *  fails to load. */}
-        <div className="flex items-center gap-2 lg:gap-3 shrink-0 text-text-light">
-          <img
-            src="/kalgoh-logo.png"
-            alt=""
-            className="h-14 lg:h-20 w-auto"
-            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-          />
-          <span className="text-xl lg:text-3xl font-bold tracking-tight text-text-light">
-            Kalgoh
-          </span>
-        </div>
+    <div className="relative max-w-[820px] mx-auto">
+      {/* max-width cap is important: without it, zooming out in the
+       *  browser (Cmd+-) makes the container grow in CSS pixels,
+       *  which makes each `aspect-square` cell grow too — producing
+       *  the opposite-of-expected behaviour where the calendar grows
+       *  as everything else shrinks. Capping the grid keeps the
+       *  whole thing responsive to zoom like any normal page. */}
 
-        <div className="flex items-center gap-2">
-          {canShowPercent && (
-            <div
-              role="radiogroup"
-              aria-label="Value display mode"
-              className="inline-flex items-center gap-1 bg-card-lighter rounded-xl p-1"
-            >
-              <button
-                type="button"
-                role="radio"
-                aria-checked={viewMode === 'amount'}
-                aria-label="Show as amount"
-                title="Amount"
-                onClick={() => setViewMode('amount')}
-                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 ${
-                  viewMode === 'amount'
-                    ? 'bg-card text-text-light shadow-sm shadow-black/20'
-                    : 'text-text-card-muted hover:text-text-light'
-                }`}
-              >
-                <DollarSign className="w-4 h-4" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                role="radio"
-                aria-checked={viewMode === 'percent'}
-                aria-label="Show as percent"
-                title="Percent"
-                onClick={() => setViewMode('percent')}
-                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 ${
-                  viewMode === 'percent'
-                    ? 'bg-card text-text-light shadow-sm shadow-black/20'
-                    : 'text-text-card-muted hover:text-text-light'
-                }`}
-              >
-                <Percent className="w-4 h-4" aria-hidden="true" />
-              </button>
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={downloadImage}
-            disabled={downloading}
-            aria-label="Save calendar as image"
-            title={downloading ? 'Saving…' : 'Save as image'}
-            className="w-11 h-11 flex items-center justify-center rounded-xl text-text-card-muted hover:text-text-light bg-card-lighter hover:bg-card-light transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/50 disabled:opacity-50"
+      {/* Interactive controls (toggle + save) live OUTSIDE the capture
+       *  ref, floated over the top-right via absolute positioning so
+       *  they sit visually next to the in-capture brand/month nav row
+       *  but are excluded from the downloaded PNG. */}
+      <div className="absolute top-0 right-0 z-10 h-12 lg:h-14 flex items-center gap-2">
+        {canShowPercent && (
+          <div
+            role="radiogroup"
+            aria-label="Value display mode"
+            className="inline-flex items-center gap-1 bg-card-lighter rounded-xl p-1 ring-hairline"
           >
-            {downloading ? (
-              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <Download className="w-4 h-4" aria-hidden="true" />
-            )}
-          </button>
-        </div>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={viewMode === 'amount'}
+              aria-label="Show as amount"
+              title="Amount"
+              onClick={() => setViewMode('amount')}
+              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors ${
+                viewMode === 'amount'
+                  ? 'bg-card text-text-light ring-hairline'
+                  : 'text-text-card-muted hover:text-text-light'
+              }`}
+            >
+              <DollarSign className="w-4 h-4" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={viewMode === 'percent'}
+              aria-label="Show as percent"
+              title="Percent"
+              onClick={() => setViewMode('percent')}
+              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors ${
+                viewMode === 'percent'
+                  ? 'bg-card text-text-light ring-hairline'
+                  : 'text-text-card-muted hover:text-text-light'
+              }`}
+            >
+              <Percent className="w-4 h-4" aria-hidden="true" />
+            </button>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={downloadImage}
+          disabled={downloading}
+          aria-label="Save calendar as image"
+          title={downloading ? 'Saving…' : 'Save as image'}
+          className="w-11 h-11 flex items-center justify-center rounded-xl text-text-card-muted hover:text-text-light bg-card-lighter hover:bg-card-light ring-hairline transition-colors disabled:opacity-50"
+        >
+          {downloading ? (
+            <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+          ) : (
+            <Download className="w-4 h-4" aria-hidden="true" />
+          )}
+        </button>
       </div>
 
       {/* Everything from here down is captured when saving as image. */}
       <div ref={captureRef}>
-      {/* Month navigation */}
-      <div className="flex items-center justify-between mb-6 lg:mb-8">
-        <button
-          type="button"
-          onClick={() => setMonthIdx((i) => Math.max(0, i - 1))}
-          disabled={monthIdx <= 0}
-          aria-label="Previous month"
-          className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-card-lighter text-text-card-muted hover:text-text-light disabled:opacity-20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 transition-colors duration-200"
-        >
-          <ChevronLeft className="w-4 h-4 lg:w-5 lg:h-5" aria-hidden="true" />
-        </button>
-
-        <div className="text-center">
-          <h3 className="text-xl lg:text-3xl font-bold text-text-light tracking-tight">
-            {format(new Date(year, month - 1), 'MMMM yyyy')}
-          </h3>
-          <div className="flex flex-wrap gap-1.5 lg:gap-2 mt-2 lg:mt-3 justify-center">
-            <span className="text-xs font-medium text-text-card-muted bg-card-lighter rounded-full px-2.5 lg:px-3 py-0.5 lg:py-1 tabular-nums">
-              {tradingDays} days
-            </span>
-            <span className="text-xs font-medium text-text-card-muted bg-card-lighter rounded-full px-2.5 lg:px-3 py-0.5 lg:py-1 tabular-nums">
-              {monthTrades} trades
-            </span>
-            <span className={`text-xs font-semibold rounded-full px-2.5 lg:px-3 py-0.5 lg:py-1 tabular-nums ${
-              monthProfit >= 0 ? 'text-profit bg-profit/10' : 'text-loss bg-loss/10'
-            }`}>
-              {viewMode === 'percent' && canShowPercent
-                ? toPctString(monthProfit, monthBaseline)
-                : `${monthProfit >= 0 ? '+' : '-'}$${Math.abs(monthProfit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            </span>
-          </div>
+      {/* Header row 1: brand lockup (left) + month nav (right).
+       *  The brand lives inside the capture area so the downloaded
+       *  PNG is branded for social sharing. The floating $/% + save
+       *  controls overlay sits above this row, to the far right,
+       *  and is outside the capture. */}
+      <div className="flex items-center justify-between gap-3 mb-4 lg:mb-5 h-12 lg:h-14 pr-36 lg:pr-44">
+        <div className="flex items-center gap-2 text-text-light">
+          <img
+            src={logoSrc}
+            alt=""
+            className="h-10 lg:h-12 w-auto"
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          />
+          <span className="text-xl lg:text-2xl font-bold tracking-tight text-text-light leading-none">
+            Kalgoh
+          </span>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setMonthIdx((i) => Math.min(months.length - 1, i + 1))}
-          disabled={monthIdx >= months.length - 1}
-          aria-label="Next month"
-          className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-card-lighter text-text-card-muted hover:text-text-light disabled:opacity-20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 transition-colors duration-200"
-        >
-          <ChevronRight className="w-4 h-4 lg:w-5 lg:h-5" aria-hidden="true" />
-        </button>
+        <div className="flex items-center gap-1.5 lg:gap-2">
+          <button
+            type="button"
+            onClick={() => setMonthIdx((i) => Math.max(0, i - 1))}
+            disabled={monthIdx <= 0}
+            aria-label="Previous month"
+            className="w-10 h-10 lg:w-11 lg:h-11 flex items-center justify-center rounded-xl bg-card-lighter ring-hairline text-text-card-muted hover:text-text-light hover:bg-card-light disabled:opacity-30 disabled:hover:bg-card-lighter transition-colors duration-200"
+          >
+            <ChevronLeft className="w-4 h-4 lg:w-5 lg:h-5" aria-hidden="true" />
+          </button>
+          <h3 className="text-base lg:text-xl font-bold text-text-light tracking-tight whitespace-nowrap leading-none min-w-[120px] lg:min-w-[160px] text-center">
+            {format(new Date(year, month - 1), 'MMMM yyyy')}
+          </h3>
+          <button
+            type="button"
+            onClick={() => setMonthIdx((i) => Math.min(months.length - 1, i + 1))}
+            disabled={monthIdx >= months.length - 1}
+            aria-label="Next month"
+            className="w-10 h-10 lg:w-11 lg:h-11 flex items-center justify-center rounded-xl bg-card-lighter ring-hairline text-text-card-muted hover:text-text-light hover:bg-card-light disabled:opacity-30 disabled:hover:bg-card-lighter transition-colors duration-200"
+          >
+            <ChevronRight className="w-4 h-4 lg:w-5 lg:h-5" aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+
+      {/* Hero KPI — the month's P&L is the most important number on
+       *  this page, so it gets proper weight. Subtitle carries the
+       *  trading-day and trade counts so the old meta pills become
+       *  redundant. */}
+      <div className="mb-4 lg:mb-6">
+        <div className={`text-3xl lg:text-5xl font-bold tabular-nums leading-none tracking-tight ${
+          monthProfit >= 0 ? 'text-profit' : 'text-loss'
+        }`}>
+          {viewMode === 'percent' && canShowPercent
+            ? toPctString(monthProfit, monthBaseline)
+            : `${monthProfit >= 0 ? '+' : '-'}$${Math.abs(monthProfit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+        </div>
+        <p className="mt-1.5 lg:mt-2 text-xs lg:text-sm text-text-card-muted tabular-nums">
+          {tradingDays} trading {tradingDays === 1 ? 'day' : 'days'} · {monthTrades} {monthTrades === 1 ? 'trade' : 'trades'}
+        </p>
       </div>
 
       {/* Header row — Mon-Fri on mobile (markets closed on weekends),
        *  full Sun-Sat + weekly column on desktop. */}
-      <div className="grid grid-cols-5 lg:grid-cols-[repeat(5,1fr)_120px] gap-1 lg:gap-2 mb-1 lg:mb-2">
+      <div className="grid grid-cols-5 lg:grid-cols-6 gap-1 lg:gap-1.5 mb-2 lg:mb-3">
         {WEEKDAYS_FULL.map((day, i) => {
           const isWeekend = i === 0 || i === 6;
           // Weekends are hidden on every breakpoint — markets are
@@ -339,7 +360,7 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
           return (
             <div
               key={day}
-              className="text-center text-[10px] font-medium text-text-card-muted uppercase tracking-widest py-1"
+              className="text-center text-[11px] lg:text-xs font-semibold text-text-card-muted uppercase tracking-[0.12em] py-1"
             >
               <span className="lg:hidden" aria-hidden="true">{WEEKDAYS_SHORT[i]}</span>
               <span className="hidden lg:inline">{day}</span>
@@ -347,15 +368,15 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
             </div>
           );
         })}
-        <div className="hidden lg:block text-center text-[10px] font-medium text-text-card-muted uppercase tracking-widest py-1 border-l border-border-card ml-1 pl-1">
+        <div className="hidden lg:block text-center text-xs font-semibold text-text-card-muted uppercase tracking-[0.12em] py-1">
           Weekly
         </div>
       </div>
 
       {/* Weeks */}
-      <div className="space-y-1 lg:space-y-2">
+      <div className="space-y-1 lg:space-y-1.5">
         {weeklyData.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-5 lg:grid-cols-[repeat(5,1fr)_120px] gap-1 lg:gap-2 items-stretch">
+          <div key={wi} className="grid grid-cols-5 lg:grid-cols-6 gap-1 lg:gap-1.5 items-stretch">
             {week.days.map((day) => {
               // Weekends (Sat/Sun) are hidden on every breakpoint —
               // markets are closed so those columns are always empty.
@@ -364,7 +385,7 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
               if (isWeekend) return null;
 
               if (!day.inMonth) {
-                return <div key={day.key} className="min-h-[44px] h-14 lg:h-20 rounded-lg lg:rounded-xl" />;
+                return <div key={day.key} className="aspect-square rounded-xl" />;
               }
 
               const d = day.data;
@@ -381,23 +402,30 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
                     type="button"
                     key={day.key}
                     aria-label={profitLabel}
-                    className={`flex min-h-[52px] h-16 lg:h-24 rounded-lg lg:rounded-xl flex-col items-center justify-center gap-0.5 lg:gap-1 cursor-pointer hover:ring-1 hover:ring-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 transition-all`}
+                    className="group relative aspect-square rounded-xl cursor-pointer ring-hairline hover:-translate-y-0.5 hover:shadow-md transition-all duration-150"
                     onClick={() => setSelectedDay(day.key)}
                     style={{ backgroundColor: bgColor }}
                   >
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm lg:text-base font-semibold text-text-light tabular-nums leading-none">
-                        {format(day.date, 'd')}
+                    {/* Date — pinned top-left so the value has the whole center. */}
+                    <span className="absolute top-2 left-2 lg:top-2.5 lg:left-3 text-[11px] lg:text-sm font-semibold text-text-card-muted tabular-nums leading-none">
+                      {format(day.date, 'd')}
+                    </span>
+                    {noteDays.has(day.key) && (
+                      <StickyNote
+                        className="absolute top-2 right-2 lg:top-2.5 lg:right-3 w-3 h-3 lg:w-3.5 lg:h-3.5 text-accent-blue"
+                        aria-hidden="true"
+                      />
+                    )}
+                    {/* Value — centered, dominant. */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 lg:gap-1 px-1">
+                      <span className={`text-lg lg:text-[26px] font-bold leading-none tabular-nums tracking-tight ${profit >= 0 ? 'text-profit' : 'text-loss'}`}>
+                        <span className="lg:hidden">{formatDayValue(profit, day.key, true)}</span>
+                        <span className="hidden lg:inline">{formatDayValue(profit, day.key, false)}</span>
                       </span>
-                      {noteDays.has(day.key) && <StickyNote className="w-2.5 h-2.5 lg:w-3 lg:h-3 text-accent-blue" aria-hidden="true" />}
+                      <span className="hidden lg:block text-[11px] text-text-card-muted leading-none tabular-nums">
+                        {d.trades} {d.trades === 1 ? 'trade' : 'trades'}
+                      </span>
                     </div>
-                    <span className={`text-[13px] lg:text-sm font-bold leading-none tabular-nums ${profit >= 0 ? 'text-profit' : 'text-loss'}`}>
-                      <span className="lg:hidden">{formatDayValue(profit, day.key, true)}</span>
-                      <span className="hidden lg:inline">{formatDayValue(profit, day.key, false)}</span>
-                    </span>
-                    <span className="hidden lg:block text-[11px] text-text-card-muted leading-none tabular-nums">
-                      {d.trades} trade{d.trades !== 1 ? 's' : ''}
-                    </span>
                   </button>
                 );
               }
@@ -406,35 +434,38 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
                 <div
                   key={day.key}
                   aria-label={profitLabel}
-                  className={`flex min-h-[52px] h-16 lg:h-24 rounded-lg lg:rounded-xl flex-col items-center justify-center gap-0.5 lg:gap-1 opacity-25`}
+                  className="relative aspect-square rounded-xl bg-card-light ring-hairline"
                 >
-                  <div className="flex items-center gap-0.5">
-                    <span className="text-sm lg:text-base font-medium text-text-card-muted tabular-nums">
-                      {format(day.date, 'd')}
-                    </span>
-                  </div>
+                  <span className="absolute top-2 left-2 lg:top-2.5 lg:left-3 text-[11px] lg:text-sm font-semibold text-text-card-muted tabular-nums leading-none">
+                    {format(day.date, 'd')}
+                  </span>
+                  <span className="absolute inset-0 flex items-center justify-center text-xs text-text-card-muted leading-none" aria-hidden="true">—</span>
                 </div>
               );
             })}
 
-            {/* Weekly total — desktop only */}
-            <div className={`hidden lg:flex rounded-xl flex-col items-center justify-center px-3 border-l border-border-card ml-1
-              ${week.weekTrades > 0
-                ? week.weekProfit >= 0 ? 'bg-profit/8' : 'bg-loss/8'
-                : 'bg-card-lighter/30'
-              }`}
+            {/* Weekly total — desktop only, matches day-cell size. */}
+            <div
+              className="hidden lg:flex aspect-square rounded-xl flex-col items-center justify-center gap-1 p-3 ring-hairline"
+              style={{
+                backgroundColor: week.weekTrades > 0
+                  ? (week.weekProfit >= 0 ? 'var(--color-profit-bg)' : 'var(--color-loss-bg)')
+                  : 'var(--color-card-light)',
+              }}
             >
               {week.weekTrades > 0 ? (
                 <>
-                  <span className={`text-base font-bold tabular-nums ${week.weekProfit >= 0 ? 'text-profit' : 'text-loss'}`}>
+                  <span className={`text-xl xl:text-2xl font-bold tracking-tight leading-none tabular-nums ${week.weekProfit >= 0 ? 'text-profit' : 'text-loss'}`}>
                     {viewMode === 'percent' && canShowPercent
                       ? toPctString(week.weekProfit, weekBaseline(week))
-                      : `${week.weekProfit >= 0 ? '+' : '-'}$${Math.abs(week.weekProfit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                      : fmtCompactMoney(week.weekProfit)}
                   </span>
-                  <span className="text-[10px] text-text-card-muted mt-0.5 tabular-nums">{week.weekTrades} trades</span>
+                  <span className="text-xs text-text-card-muted tabular-nums">
+                    {week.weekTrades} {week.weekTrades === 1 ? 'trade' : 'trades'}
+                  </span>
                 </>
               ) : (
-                <span className="text-[10px] text-text-card-muted">--</span>
+                <span className="text-sm text-text-card-muted">—</span>
               )}
             </div>
           </div>
@@ -467,6 +498,11 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
         const bestDayPct = dailyPcts.length ? Math.max(...dailyPcts) : 0;
         const worstDayPct = dailyPcts.length ? Math.min(...dailyPcts) : 0;
 
+        // Derive sign from the actual value so an all-losing month
+        // renders "Best Day" in loss color (instead of forcing it to
+        // always look positive).
+        const bestDayVal = usePct ? bestDayPct : bestDay;
+        const worstDayVal = usePct ? worstDayPct : worstDay;
         const stats = [
           { label: 'Win Days', value: `${winDays}/${tradingDays}`, sub: `${((winDays / tradingDays) * 100).toFixed(0)}%`, icon: Calendar },
           {
@@ -477,26 +513,26 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
           },
           {
             label: 'Best Day',
-            value: usePct ? fmtPct(bestDayPct) : `+$${fmtMoney(bestDay)}`,
-            positive: true,
+            value: usePct ? fmtPct(bestDayPct) : `${bestDay >= 0 ? '+' : '-'}$${fmtMoney(bestDay)}`,
+            positive: bestDayVal >= 0,
             icon: TrendingUp,
           },
           {
             label: 'Worst Day',
-            value: usePct ? fmtPct(worstDayPct) : `-$${fmtMoney(worstDay)}`,
-            positive: false,
+            value: usePct ? fmtPct(worstDayPct) : `${worstDay >= 0 ? '+' : '-'}$${fmtMoney(worstDay)}`,
+            positive: worstDayVal >= 0,
             icon: TrendingDown,
           },
         ];
         return (
           <div className="mt-6 lg:mt-8 grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-4">
             {stats.map((stat) => (
-              <div key={stat.label} className="bg-card-lighter rounded-xl lg:rounded-2xl p-3 lg:p-4 min-h-[60px] lg:min-h-[80px]">
-                <div className="flex items-center gap-1.5 lg:gap-2 mb-1 lg:mb-2">
+              <div key={stat.label} className="bg-card-light ring-hairline rounded-xl lg:rounded-2xl p-3 lg:p-4 min-h-[68px] lg:min-h-[88px]">
+                <div className="flex items-center gap-1.5 lg:gap-2 mb-1.5 lg:mb-2">
                   <stat.icon className="w-3 h-3 lg:w-3.5 lg:h-3.5 text-text-card-muted shrink-0" aria-hidden="true" />
-                  <p className="text-[10px] uppercase tracking-[0.1em] text-text-card-muted font-medium whitespace-nowrap">{stat.label}</p>
+                  <p className="text-[10px] lg:text-[11px] uppercase tracking-[0.1em] text-text-card-muted font-semibold whitespace-nowrap">{stat.label}</p>
                 </div>
-                <p className={`text-base lg:text-lg font-bold tabular-nums ${
+                <p className={`text-base lg:text-xl font-bold tabular-nums leading-tight ${
                   stat.positive === undefined ? 'text-text-light' : stat.positive ? 'text-profit' : 'text-loss'
                 }`}>
                   {stat.value}
