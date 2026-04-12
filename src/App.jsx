@@ -228,7 +228,7 @@ function AuthenticatedApp({ user, signOut, changeEmail }) {
 
           {/* Calendar */}
           {tab === 'calendar' && hasTrades && (
-            <div className="card-premium bg-card rounded-2xl lg:rounded-3xl p-4 lg:p-6">
+            <div className="card-premium bg-card rounded-2xl lg:rounded-3xl p-3 lg:p-6">
               {hasFiltered ? (
                 <CalendarGrid
                   trades={filteredTrades}

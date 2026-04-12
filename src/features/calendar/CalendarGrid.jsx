@@ -232,12 +232,12 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
        *  ref, floated over the top-right via absolute positioning so
        *  they sit visually next to the in-capture brand/month nav row
        *  but are excluded from the downloaded PNG. */}
-      <div className="absolute top-0 right-0 z-10 h-12 lg:h-14 flex items-center gap-2">
+      <div className="absolute top-0 right-0 z-10 h-10 lg:h-14 flex items-center gap-1.5 lg:gap-2">
         {canShowPercent && (
           <div
             role="radiogroup"
             aria-label="Value display mode"
-            className="inline-flex items-center gap-1 bg-card-lighter rounded-xl p-1 ring-hairline"
+            className="inline-flex items-center gap-0.5 lg:gap-1 bg-card-lighter rounded-lg lg:rounded-xl p-0.5 lg:p-1 ring-hairline"
           >
             <button
               type="button"
@@ -246,13 +246,13 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
               aria-label="Show as amount"
               title="Amount"
               onClick={() => setViewMode('amount')}
-              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors ${
+              className={`w-7 h-7 lg:w-9 lg:h-9 flex items-center justify-center rounded-md lg:rounded-lg transition-colors ${
                 viewMode === 'amount'
                   ? 'bg-card text-text-light ring-hairline'
                   : 'text-text-card-muted hover:text-text-light'
               }`}
             >
-              <DollarSign className="w-4 h-4" aria-hidden="true" />
+              <DollarSign className="w-3.5 h-3.5 lg:w-4 lg:h-4" aria-hidden="true" />
             </button>
             <button
               type="button"
@@ -261,13 +261,13 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
               aria-label="Show as percent"
               title="Percent"
               onClick={() => setViewMode('percent')}
-              className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors ${
+              className={`w-7 h-7 lg:w-9 lg:h-9 flex items-center justify-center rounded-md lg:rounded-lg transition-colors ${
                 viewMode === 'percent'
                   ? 'bg-card text-text-light ring-hairline'
                   : 'text-text-card-muted hover:text-text-light'
               }`}
             >
-              <Percent className="w-4 h-4" aria-hidden="true" />
+              <Percent className="w-3.5 h-3.5 lg:w-4 lg:h-4" aria-hidden="true" />
             </button>
           </div>
         )}
@@ -277,7 +277,7 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
           disabled={downloading}
           aria-label="Save calendar as image"
           title={downloading ? 'Saving…' : 'Save as image'}
-          className="w-11 h-11 flex items-center justify-center rounded-xl text-text-card-muted hover:text-text-light bg-card-lighter hover:bg-card-light ring-hairline transition-colors disabled:opacity-50"
+          className="hidden lg:flex w-11 h-11 items-center justify-center rounded-xl text-text-card-muted hover:text-text-light bg-card-lighter hover:bg-card-light ring-hairline transition-colors disabled:opacity-50"
         >
           {downloading ? (
             <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
@@ -297,30 +297,30 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
        *  capture. On desktop the month nav is absolute-centered so
        *  it lives at the true midpoint of the calendar width,
        *  regardless of the brand / controls widths. */}
-      <div className="relative flex items-center justify-between lg:justify-start gap-3 mb-4 lg:mb-5 h-12 lg:h-14 pr-36 lg:pr-44">
-        <div className="flex items-center gap-2 text-text-light">
+      <div className="relative flex items-center justify-between lg:justify-start gap-2 lg:gap-3 mb-2 lg:mb-5 h-10 lg:h-14 pr-[72px] lg:pr-44">
+        <div className="flex items-center gap-1.5 lg:gap-2 text-text-light shrink-0">
           <img
             src={logoSrc}
             alt=""
-            className="h-10 lg:h-12 w-auto"
+            className="h-8 lg:h-12 w-auto"
             onError={(e) => { e.currentTarget.style.display = 'none'; }}
           />
-          <span className="text-xl lg:text-2xl font-bold tracking-tight text-text-light leading-none">
+          <span className="hidden lg:inline text-2xl font-bold tracking-tight text-text-light leading-none">
             Kalgoh
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5 lg:gap-2 lg:absolute lg:left-1/2 lg:-translate-x-1/2 lg:top-1/2 lg:-translate-y-1/2">
+        <div className="flex items-center gap-1 lg:gap-2 lg:absolute lg:left-1/2 lg:-translate-x-1/2 lg:top-1/2 lg:-translate-y-1/2">
           <button
             type="button"
             onClick={() => setMonthIdx((i) => Math.max(0, i - 1))}
             disabled={monthIdx <= 0}
             aria-label="Previous month"
-            className="w-10 h-10 lg:w-11 lg:h-11 flex items-center justify-center rounded-xl bg-card-lighter ring-hairline text-text-card-muted hover:text-text-light hover:bg-card-light disabled:opacity-30 disabled:hover:bg-card-lighter transition-colors duration-200"
+            className="w-8 h-8 lg:w-11 lg:h-11 flex items-center justify-center rounded-lg lg:rounded-xl bg-card-lighter ring-hairline text-text-card-muted hover:text-text-light hover:bg-card-light disabled:opacity-30 disabled:hover:bg-card-lighter transition-colors duration-200"
           >
-            <ChevronLeft className="w-4 h-4 lg:w-5 lg:h-5" aria-hidden="true" />
+            <ChevronLeft className="w-3.5 h-3.5 lg:w-5 lg:h-5" aria-hidden="true" />
           </button>
-          <h3 className="text-base lg:text-xl font-bold text-text-light tracking-tight whitespace-nowrap leading-none min-w-[120px] lg:min-w-[160px] text-center">
+          <h3 className="text-sm lg:text-xl font-bold text-text-light tracking-tight whitespace-nowrap leading-none min-w-[90px] lg:min-w-[160px] text-center">
             {format(new Date(year, month - 1), 'MMMM yyyy')}
           </h3>
           <button
@@ -328,9 +328,9 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
             onClick={() => setMonthIdx((i) => Math.min(months.length - 1, i + 1))}
             disabled={monthIdx >= months.length - 1}
             aria-label="Next month"
-            className="w-10 h-10 lg:w-11 lg:h-11 flex items-center justify-center rounded-xl bg-card-lighter ring-hairline text-text-card-muted hover:text-text-light hover:bg-card-light disabled:opacity-30 disabled:hover:bg-card-lighter transition-colors duration-200"
+            className="w-8 h-8 lg:w-11 lg:h-11 flex items-center justify-center rounded-lg lg:rounded-xl bg-card-lighter ring-hairline text-text-card-muted hover:text-text-light hover:bg-card-light disabled:opacity-30 disabled:hover:bg-card-lighter transition-colors duration-200"
           >
-            <ChevronRight className="w-4 h-4 lg:w-5 lg:h-5" aria-hidden="true" />
+            <ChevronRight className="w-3.5 h-3.5 lg:w-5 lg:h-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -353,13 +353,13 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
       {/* Mobile-only compact total line. Desktop shows the pill
        *  inside the header row instead. Kept inside captureRef so
        *  screenshots always include the headline number. */}
-      <div className="lg:hidden flex items-center justify-between mb-3">
-        <span className={`font-bold text-lg leading-none tabular-nums ${monthProfit >= 0 ? 'text-profit' : 'text-loss'}`}>
+      <div className="lg:hidden flex items-center justify-between mb-2">
+        <span className={`font-bold text-base leading-none tabular-nums ${monthProfit >= 0 ? 'text-profit' : 'text-loss'}`}>
           {viewMode === 'percent' && canShowPercent
             ? toPctString(monthProfit, monthBaseline)
             : fmtCompactMoney(monthProfit)}
         </span>
-        <span className="text-[11px] text-text-card-muted tabular-nums">
+        <span className="text-[10px] text-text-card-muted tabular-nums">
           {tradingDays} {tradingDays === 1 ? 'day' : 'days'} · {monthTrades} {monthTrades === 1 ? 'trade' : 'trades'}
         </span>
       </div>
@@ -422,18 +422,18 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
                     style={{ backgroundColor: bgColor }}
                   >
                     {/* Date — pinned top-left so the value has the whole center. */}
-                    <span className="absolute top-2 left-2 lg:top-2.5 lg:left-3 text-[11px] lg:text-sm font-semibold text-text-card-muted tabular-nums leading-none">
+                    <span className="absolute top-1.5 left-1.5 lg:top-2.5 lg:left-3 text-[10px] lg:text-sm font-semibold text-text-card-muted tabular-nums leading-none">
                       {format(day.date, 'd')}
                     </span>
                     {noteDays.has(day.key) && (
                       <StickyNote
-                        className="absolute top-2 right-2 lg:top-2.5 lg:right-3 w-3 h-3 lg:w-3.5 lg:h-3.5 text-accent-blue"
+                        className="absolute top-1.5 right-1.5 lg:top-2.5 lg:right-3 w-2.5 h-2.5 lg:w-3.5 lg:h-3.5 text-accent-blue"
                         aria-hidden="true"
                       />
                     )}
                     {/* Value — centered, dominant. */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 lg:gap-1 px-1">
-                      <span className={`text-lg lg:text-[26px] font-bold leading-none tabular-nums tracking-tight ${profit >= 0 ? 'text-profit' : 'text-loss'}`}>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-0 lg:gap-1 px-0.5 lg:px-1">
+                      <span className={`text-[15px] lg:text-[26px] font-bold leading-none tabular-nums tracking-tight ${profit >= 0 ? 'text-profit' : 'text-loss'}`}>
                         <span className="lg:hidden">{formatDayValue(profit, day.key, true)}</span>
                         <span className="hidden lg:inline">{formatDayValue(profit, day.key, false)}</span>
                       </span>
@@ -451,10 +451,10 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
                   aria-label={profitLabel}
                   className="relative aspect-square rounded-xl bg-card-light ring-hairline"
                 >
-                  <span className="absolute top-2 left-2 lg:top-2.5 lg:left-3 text-[11px] lg:text-sm font-semibold text-text-card-muted tabular-nums leading-none">
+                  <span className="absolute top-1.5 left-1.5 lg:top-2.5 lg:left-3 text-[10px] lg:text-sm font-semibold text-text-card-muted tabular-nums leading-none">
                     {format(day.date, 'd')}
                   </span>
-                  <span className="absolute inset-0 flex items-center justify-center text-xs text-text-card-muted leading-none" aria-hidden="true">—</span>
+                  <span className="absolute inset-0 flex items-center justify-center text-[10px] lg:text-xs text-text-card-muted leading-none" aria-hidden="true">—</span>
                 </div>
               );
             })}
