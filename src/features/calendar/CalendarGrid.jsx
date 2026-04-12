@@ -310,7 +310,7 @@ export default function DailyCalendar({ trades, allTrades, startingBalance = 0, 
           </span>
         </div>
 
-        <div className="flex items-center gap-1 lg:gap-2 lg:absolute lg:left-1/2 lg:-translate-x-1/2 lg:top-1/2 lg:-translate-y-1/2">
+        <div className="flex items-center gap-1 lg:gap-2 absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2">
           <button
             type="button"
             onClick={() => setMonthIdx((i) => Math.max(0, i - 1))}
