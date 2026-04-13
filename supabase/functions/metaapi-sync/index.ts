@@ -2,11 +2,12 @@
 // Pulls historical trades + metrics from MetaStats for one or more
 // broker_connections and upserts them into the trades / balance_ops tables.
 //
-// Invoked two ways:
-//   1. pg_cron (every 10 minutes) — body: {"source":"cron"}, processes every
-//      active connection across all users.
-//   2. UI "Sync now" button — body: {"connectionId": 123}, processes a single
-//      connection and requires a user JWT.
+// Invoked via the UI "Sync now" button — body: {"connectionId": 123},
+// processes a single connection and requires a user JWT.
+//
+// Cron-mode (body: {"source":"cron"}) is still supported but the pg_cron
+// schedule has been disabled (see 20260413_disable_auto_sync.sql).
+// All syncing is manual-only to avoid unnecessary MetaAPI costs.
 
 // deno-lint-ignore-file no-explicit-any
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.103.0';

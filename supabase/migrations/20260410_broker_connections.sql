@@ -175,6 +175,8 @@ grant execute on function public.encrypt_investor_password(text) to service_role
 
 -- ============================================================================
 -- pg_cron: schedule the sync function every 10 minutes
+-- NOTE: This cron job is DISABLED by 20260413_disable_auto_sync.sql.
+-- Sync is now manual-only (user clicks "Sync now" in the UI).
 -- ============================================================================
 
 create extension if not exists pg_cron;

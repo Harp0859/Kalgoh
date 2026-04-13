@@ -46,7 +46,7 @@ Use **only** these colors. Any other hex you're tempted to pick is wrong.
 | Role | Hex | RGB | When |
 |---|---|---|---|
 | **Ink** (headlines on cream) | `#0a0a0a` | 10, 10, 10 | Headlines and body copy on cream backgrounds |
-| **Cream** (primary background) | `#f5f3ee` | 245, 243, 238 | Default post background — warm off-white |
+| **Cream** (primary background) | `# l` | 245, 243, 238 | Default post background — warm off-white |
 | **Paper** (card surface on cream) | `#ffffff` | 255, 255, 255 | Cards and pulled-out content blocks |
 | **Coal** (dark background) | `#0a0a0a` | 10, 10, 10 | Dark-mode posts — matches the app dark theme |
 | **Slab** (card on coal) | `#161616` | 22, 22, 22 | Cards on dark-mode posts |
